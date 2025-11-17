@@ -2,7 +2,7 @@
 
 # Projet_Industriel_2026
 
-## 🤖 Project Description — AI-Driven Autonomous Mobility Platform
+## Project Description - AI-Driven Autonomous Mobility Platform
 
 This project focuses on the development of a fully autonomous mobility platform, built with an industrial engineering approach and strongly centered on artificial intelligence.
 
@@ -15,19 +15,19 @@ The platform integrates:
 - An **STM32 microcontroller** running real-time control and actuator management in **C++**,  
 - A modular hardware architecture including LiDAR, camera, motor control, and telemetry.
 
-### 🧠 Artificial Intelligence & Perception  
+### Artificial Intelligence & Perception  
 - Real-time computer vision for feature extraction and spatial understanding  
 - Machine learning pipelines for perception, prediction, and autonomous control  
 - Reinforcement and imitation learning for adaptive navigation behaviors  
 - Sensor fusion (LiDAR + camera + onboard telemetry)  
 
-### ⚙️ Embedded Intelligence & Real-Time Control  
+### Embedded Intelligence & Real-Time Control  
 - Deterministic control loops for steering and propulsion  
 - Low-latency sensor acquisition and decoding  
 - STM32 firmware ensuring consistent timing and reliable actuation  
 - Dynamic modeling to characterize turning radius, constraints, and latency budgets  
 
-### 🛠️ System Architecture & Integration  
+### System Architecture & Integration  
 - Modular hardware architecture for sensing, actuation, and computation  
 - Integration of LiDAR, camera modules, servo controllers, and embedded processors  
 - Spatial mapping using LiDAR-based reconstruction  
