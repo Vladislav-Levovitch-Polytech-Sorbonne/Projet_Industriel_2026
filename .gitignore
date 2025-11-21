@@ -1,0 +1,5 @@
+# Temporary files
+.$*
+*.bkp
+*.dtmp
+*.tmp

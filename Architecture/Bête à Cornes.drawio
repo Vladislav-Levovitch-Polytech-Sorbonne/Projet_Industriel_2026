@@ -1,0 +1,49 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" version="29.0.3">
+  <diagram name="第 1 页" id="nCzbqLYzFKaaZ03ZW9O0">
+    <mxGraphModel dx="697" dy="599" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="Diagramme Bête à Cornes - Projet CoVAPSy&amp;nbsp;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="40" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="&lt;b&gt;À qui rend-il service ?&lt;/b&gt;&lt;br&gt;&lt;hr&gt;1. L&#39;équipe Sorbonne&lt;br&gt;(Ingénieurs/Étudiants)&lt;br&gt;&lt;br&gt;2. Organisateurs CoVAPSy&lt;br&gt;(Respect du règlement)" style="ellipse;whiteSpace=wrap;html=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;arcSize=50;" vertex="1" parent="1">
+          <mxGeometry x="80" y="120" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;b&gt;Sur quoi agit-il ?&lt;/b&gt;&lt;br&gt;&lt;hr&gt;1. Environnement / Piste&lt;br&gt;(PVC, Lumière, Adhérence)&lt;br&gt;&lt;br&gt;2. Obstacles Dynamiques&lt;br&gt;(Autres véhicules)" style="ellipse;whiteSpace=wrap;html=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="120" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="&lt;b&gt;Voiture Autonome (1/10)&lt;/b&gt;&lt;br&gt;(Système Embarqué)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;strokeWidth=2;arcSize=20;" vertex="1" parent="1">
+          <mxGeometry x="300" y="320" width="200" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="&lt;b&gt;Dans quel but ?&lt;/b&gt;&lt;br&gt;&lt;hr&gt;1. Gagner la compétition (Performance)&lt;br&gt;2. Valider l&#39;architecture ROS 2&lt;br&gt;3. Réussir le transfert Sim-to-Real" style="ellipse;whiteSpace=wrap;html=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="450" width="300" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="" style="endArrow=classic;html=1;curved=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="1" source="3" target="5">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="190" y="260" as="sourcePoint" />
+            <mxPoint x="290" y="340" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="190" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="8" value="" style="endArrow=classic;html=1;curved=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="1" source="4" target="5">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="610" y="260" as="sourcePoint" />
+            <mxPoint x="510" y="340" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="610" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="9" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;" edge="1" parent="1" source="5" target="6">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="390" as="sourcePoint" />
+            <mxPoint x="400" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

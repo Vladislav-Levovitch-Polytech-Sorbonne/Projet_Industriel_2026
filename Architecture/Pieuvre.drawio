@@ -1,0 +1,88 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" version="29.0.3">
+  <diagram name="第 1 页" id="HkHdhk_bs7GxhsXVC8vd">
+    <mxGraphModel dx="933" dy="599" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;Diagramme Pieuvre (Analyse Fonctionnelle) - CoVAPSy&lt;/b&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="240" y="20" width="400" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="system" value="&lt;b&gt;Voiture Autonome&lt;br&gt;(Base TT-02)&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;strokeWidth=2;arcSize=20;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="340" y="320" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_team" value="&lt;b&gt;Équipe / Stratégie&lt;/b&gt;&lt;br&gt;(Sorbonne)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="190" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_track" value="&lt;b&gt;Piste (ODD)&lt;/b&gt;&lt;br&gt;(PVC Gris, Bornes R/V)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="560" width="200" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_obs" value="&lt;b&gt;Obstacles&lt;/b&gt;&lt;br&gt;(Concurrents/Statique)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="810" y="290" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_rules" value="&lt;b&gt;Règlement&lt;/b&gt;&lt;br&gt;(Sécurité, Homologation)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="670" y="530" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_power" value="&lt;b&gt;Énergie&lt;/b&gt;&lt;br&gt;(NiMH 7.2V, Sag)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="30" y="505" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ext_compute" value="&lt;b&gt;Calcul &amp; Capteurs&lt;/b&gt;&lt;br&gt;(Jetson, Lidar, Caméra)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="10" y="210" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="fp1_link" value="FP1" style="curved=1;endArrow=none;html=1;strokeWidth=3;strokeColor=#FF3333;dashed=1;" edge="1" parent="1" source="ext_team" target="ext_track">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="440" y="360" as="sourcePoint" />
+            <mxPoint x="440" y="410" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="560" y="360" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fp1_label" value="&lt;b&gt;FP1&lt;/b&gt;: Naviguer de manière autonome&lt;br&gt;et performante sur le circuit" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;fontColor=#CC0000;" connectable="0" vertex="1" parent="fp1_link">
+          <mxGeometry x="0.1" y="10" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fc1" value="FC1" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1" source="system" target="ext_track">
+          <mxGeometry width="50" height="50" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc1_label" value="&lt;b&gt;FC1&lt;/b&gt;: Adhérer au sol (PVC) &lt;br&gt;&amp; Détecter limites (R/V)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;" connectable="0" vertex="1" parent="fc1">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fc2" value="FC2" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1" source="system" target="ext_obs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc2_label" value="&lt;b&gt;FC2&lt;/b&gt;: Éviter les collisions&lt;br&gt;(Survie &gt; Vitesse)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;" connectable="0" vertex="1" parent="fc2">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fc3" value="FC3" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1" source="system" target="ext_rules">
+          <mxGeometry width="50" height="50" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc3_label" value="&lt;b&gt;FC3&lt;/b&gt;: Respecter dim. &lt;br&gt;&amp; Arrêt d&#39;urgence" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;" connectable="0" vertex="1" parent="fc3">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fc4" value="FC4" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1" source="system" target="ext_power">
+          <mxGeometry width="50" height="50" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc4_label" value="&lt;b&gt;FC4&lt;/b&gt;: Gérer la tension&lt;br&gt;(Voltage Sag)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;" connectable="0" vertex="1" parent="fc4">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fc5" value="FC5" style="endArrow=none;html=1;strokeWidth=2;" edge="1" parent="1" source="system" target="ext_compute">
+          <mxGeometry width="50" height="50" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="fc5_label" value="&lt;b&gt;FC5&lt;/b&gt;: Traiter données temps réel&lt;br&gt;(Sim-to-Real / ROS 2)" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;" connectable="0" vertex="1" parent="fc5">
+          <mxGeometry x="0.2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,159 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" version="29.0.3">
+  <diagram name="第 1 页" id="0J6Gou7b3j9yGz1HcRBE">
+    <mxGraphModel dx="1696" dy="1089" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="JOfnUIvmvFmT7K072eLu-1" value="Couche Matérielle (Hardware)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="830" width="1082" height="232" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-2" value="Logiciel de Base (BSW) - Pilotes &amp; Firmware" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="134" y="400" width="1015" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-3" value="Firmware Microcontrôleur (STM32)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="154" y="627" width="664" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-4" value="Abstraction Matérielle E/S" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="198" y="425" width="931" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-5" value="Environnement d&#39;Exécution (RTE) - Middleware ROS" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="175" y="198" width="882" height="152" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-6" value="Couche Application (Application Layer) - Nœuds ROS" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="270" y="20" width="692" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-7" value="SWC Perception&#xa;Caméra &amp;amp; Lidar" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="305" y="45" width="143" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-8" value="SWC Planification&#xa;Trajectoire &amp;amp; Décision" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="498" y="45" width="189" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-9" value="SWC Contrôle&#xa;Latéral &amp;amp; Longitudinal" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="737" y="45" width="190" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-10" value="ROS 2 DDS / Topics &amp;amp; Services&#xa;Bus Virtuel" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="782" y="223" width="230" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-11" value="Pilote Lidar&#xa;Paquet ROS" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="782" y="450" width="112" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-12" value="Pilote Caméra&#xa;GStreamer/V4L2" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="944" y="450" width="149" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-13" value="Pilote Série&#xa;USB-UART" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="298" y="450" width="112" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-14" value="Génération PWM" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="164" y="664" width="149" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-15" value="Lecture IMU" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="313" y="701" width="116" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-16" value="Surveillance Sécurité / Arrêt d&#39;Urgence" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="597" y="652" width="230" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-17" value="Jetson Nano / RPi" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="55" y="971" width="157" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-18" value="STM32 Nucleo" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="313" y="855" width="129" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-19" value="Capteurs : Lidar &amp; Caméra" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="818" y="855" width="221" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-20" value="Actionneurs : Moteur &amp; Servo" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="262" y="959" width="230" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-21" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0;entryY=0.24;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-7" target="JOfnUIvmvFmT7K072eLu-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="376" y="198" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-22" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0.15;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-8" target="JOfnUIvmvFmT7K072eLu-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="592" y="198" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-23" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0.85;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-9" target="JOfnUIvmvFmT7K072eLu-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="832" y="198" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-24" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.87;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-10" target="JOfnUIvmvFmT7K072eLu-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="838" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-25" value="" style="curved=1;startArrow=block;endArrow=block;exitX=1;exitY=0.78;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-10" target="JOfnUIvmvFmT7K072eLu-12">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1019" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-26" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0;exitY=0.74;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-10" target="JOfnUIvmvFmT7K072eLu-13">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="354" y="350" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-27" value="Protocole UART" style="curved=1;startArrow=block;endArrow=block;strokeWidth=3;exitX=0.01;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-13" target="JOfnUIvmvFmT7K072eLu-14">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="263" y="553" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-28" value="Protocole UART" style="curved=1;startArrow=block;endArrow=block;strokeWidth=3;exitX=1;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-13" target="JOfnUIvmvFmT7K072eLu-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="446" y="553" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-29" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.29;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-11" target="JOfnUIvmvFmT7K072eLu-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="838" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-30" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.71;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-12" target="JOfnUIvmvFmT7K072eLu-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1019" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-31" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.04;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-14" target="JOfnUIvmvFmT7K072eLu-18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="263" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-32" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-18" target="JOfnUIvmvFmT7K072eLu-20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="JOfnUIvmvFmT7K072eLu-33" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=1;entryY=0.29;rounded=0;" edge="1" parent="1" source="JOfnUIvmvFmT7K072eLu-16" target="JOfnUIvmvFmT7K072eLu-18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="668" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

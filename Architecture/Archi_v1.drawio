@@ -1,0 +1,159 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.0.3 Chrome/140.0.7339.249 Electron/38.7.0 Safari/537.36" version="29.0.3">
+  <diagram name="第 1 页" id="pnA7ZLZMSql0NBla6P_m">
+    <mxGraphModel dx="1264" dy="1089" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-1" value="物理硬件层 (Hardware)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="20" y="830" width="923" height="208" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-2" value="基础软件层 (BSW) - Drivers &amp; Firmware" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="105" y="424" width="905" height="356" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-3" value="微控制器固件 (STM32)" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="125" y="651" width="554" height="104" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-4" value="IO 硬件抽象" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="159" y="449" width="831" height="128" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-5" value="运行时环境 (RTE) - ROS MiddleWare" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="75" y="222" width="881" height="152" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-6" value="应用层 (Application Layer) - ROS Nodes" style="whiteSpace=wrap;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="45" y="20" width="837" height="152" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-7" value="感知 SWC&#xa;Perception: Camera &amp;amp; Lidar" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="80" y="57" width="229" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-8" value="规划 SWC&#xa;Path Planning &amp;amp; Decision" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="360" y="57" width="208" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-9" value="控制 SWC&#xa;Lateral &amp;amp; Longitudinal Control" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="618" y="45" width="230" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-10" value="ROS 2 DDS / Topics &amp;amp; Services&#xa;Virtual Bus" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="641" y="247" width="230" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-11" value="Lidar Driver&#xa;ROS Pkg" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="641" y="474" width="114" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-12" value="Camera Driver&#xa;GStreamer/V4L2" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="806" y="474" width="149" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-13" value="Serial Driver&#xa;USB-UART" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="256" y="474" width="119" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-14" value="PWM 生成服务" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="160" y="676" width="133" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-15" value="IMU 读取服务" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="342" y="676" width="125" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-16" value="急停安全监控" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="517" y="676" width="126" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-17" value="Jetson Nano / RPi" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="55" y="959" width="157" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-18" value="STM32 Nucleo" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="263" y="855" width="129" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-19" value="Lidar &amp; Camera" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="718" y="855" width="142" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-20" value="Motor &amp; Servo" style="rounded=1;arcSize=20;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="262" y="959" width="131" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-21" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0;entryY=0.29;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-7" target="du-gBDzYi4eYZ4jbBqcg-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="195" y="222" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-22" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0.11;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-8" target="du-gBDzYi4eYZ4jbBqcg-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="464" y="222" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-23" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.5;exitY=1;entryX=0.89;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-9" target="du-gBDzYi4eYZ4jbBqcg-10">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="733" y="222" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-24" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0.79;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-10" target="du-gBDzYi4eYZ4jbBqcg-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="698" y="374" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-25" value="" style="curved=1;startArrow=block;endArrow=block;exitX=1;exitY=0.8;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-10" target="du-gBDzYi4eYZ4jbBqcg-12">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="374" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-26" value="" style="curved=1;startArrow=block;endArrow=block;exitX=0;exitY=0.8;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-10" target="du-gBDzYi4eYZ4jbBqcg-13">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="316" y="374" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-27" value="UART Protocol" style="curved=1;startArrow=block;endArrow=block;strokeWidth=3;exitX=0.04;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-13" target="du-gBDzYi4eYZ4jbBqcg-14">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="226" y="577" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-28" value="UART Protocol" style="curved=1;startArrow=block;endArrow=block;strokeWidth=3;exitX=0.96;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-13" target="du-gBDzYi4eYZ4jbBqcg-15">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="405" y="577" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-29" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.17;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-11" target="du-gBDzYi4eYZ4jbBqcg-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="698" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-30" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.83;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-12" target="du-gBDzYi4eYZ4jbBqcg-19">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="880" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-31" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.09;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-14" target="du-gBDzYi4eYZ4jbBqcg-18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="226" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-32" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=0.5;entryY=0;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-18" target="du-gBDzYi4eYZ4jbBqcg-20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="du-gBDzYi4eYZ4jbBqcg-33" value="" style="curved=1;startArrow=none;endArrow=none;exitX=0.5;exitY=1;entryX=1;entryY=0.25;rounded=0;" edge="1" parent="1" source="du-gBDzYi4eYZ4jbBqcg-16" target="du-gBDzYi4eYZ4jbBqcg-18">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
