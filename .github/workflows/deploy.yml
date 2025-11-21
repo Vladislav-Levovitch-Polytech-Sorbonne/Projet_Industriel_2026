@@ -1,0 +1,35 @@
+name: Deploy Documentation
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write  # Required to push to the gh-pages branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required for some plugins to read git history
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.x
+
+      - name: Install Dependencies
+        # Installs the plugins listed in your requirements.txt
+        run: pip install -r Docs/requirements.txt
+
+      - name: Configure Git User
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+
+      - name: Deploy to GitHub Pages
+        # The -f flag is CRITICAL because your config is in a subfolder
+        run: mkdocs gh-deploy --force -f Docs/mkdocs.yml

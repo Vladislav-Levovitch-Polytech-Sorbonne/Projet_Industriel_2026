@@ -1,0 +1,11 @@
+:root {
+  /* Define your custom color #2c362b */
+  --md-primary-fg-color:        #2c362b;
+  --md-primary-fg-color--light: #3e4b3d; /* Slightly lighter for hover effects */
+  --md-primary-fg-color--dark:  #1b211a; /* Slightly darker for contrast */
+}
+
+/* Optional: Adjust dark mode specific overrides if needed */
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color:        #5b675a; 
+}

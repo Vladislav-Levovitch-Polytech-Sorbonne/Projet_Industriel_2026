@@ -1,0 +1,5 @@
+mkdocs-material
+mkdocs-static-i18n
+mkdocs-include-markdown-plugin
+mkdocs-exclude
+mkdocs-glightbox
