@@ -23,7 +23,7 @@ jobs:
 
       - name: Install Dependencies
         # Installs the plugins listed in your requirements.txt
-        run: pip install -r requirements.txt
+        run: pip install -r Docs/requirements.txt
 
       - name: Configure Git User
         run: |
@@ -32,4 +32,4 @@ jobs:
 
       - name: Deploy to GitHub Pages
         # The -f flag is CRITICAL because your config is in a subfolder
-        run: mkdocs gh-deploy --force -f docs/mkdocs.yml
+        run: mkdocs gh-deploy --force -f Docs/mkdocs.yml
