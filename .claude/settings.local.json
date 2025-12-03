@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:ajuton-ens.github.io)",
+      "WebFetch(domain:ens-paris-saclay.fr)",
+      "Bash(python -c:*)",
+      "Bash(python create_io_bilan.py:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
