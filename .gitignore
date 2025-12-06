@@ -3,3 +3,10 @@
 *.bkp
 *.dtmp
 *.tmp
+
+#python environment
+venv/
+
+
+# Kicad files
+HBridge-backups/
