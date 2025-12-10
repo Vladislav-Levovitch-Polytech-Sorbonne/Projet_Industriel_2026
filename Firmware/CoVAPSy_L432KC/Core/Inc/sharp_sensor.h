@@ -52,13 +52,13 @@ typedef struct {
 /* ============================================ */
 
 #define SHARP_ADC_RESOLUTION    4096.0f        // 12-bit ADC
-#define SHARP_VREF              3.3f           // Reference voltage (V)
+#define SHARP_VREF              3.3f          // Reference voltage (V) - Calibrated: 1.09V × 4096 / 2507
 #define SHARP_DISTANCE_COEFF    27.86f         // GP2Y0A21YK0F distance coefficient
-#define SHARP_VOLTAGE_OFFSET    0.42f          // Voltage offset for distance calculation
-#define SHARP_MIN_DISTANCE      10.0f          // Minimum measurement distance (cm)
+#define SHARP_POWER_EXPONENT    -1.15f         // GP2Y0A21YK0F power exponent
+#define SHARP_MIN_DISTANCE      6.0f           // Minimum measurement distance (cm) - practical lower limit
 #define SHARP_MAX_DISTANCE      80.0f          // Maximum measurement distance (cm)
-#define SHARP_MIN_VOLTAGE       0.5f           // Minimum valid voltage (V)
-#define SHARP_MAX_VOLTAGE       2.5f           // Maximum valid voltage (V)
+#define SHARP_MIN_VOLTAGE       0.4f           // Minimum valid voltage (V)
+#define SHARP_MAX_VOLTAGE       3.1f           // Maximum valid voltage (V)
 
 /* ============================================ */
 /* Public Function Prototypes                   */
@@ -101,7 +101,7 @@ float Sharp_ConvertToVoltage(uint16_t adc_raw);
 /**
  * @brief Convert voltage to distance
  *
- * This function uses the formula: Distance(cm) = 27.86 / (Voltage - 0.42)
+ * This function uses the formula: Distance(cm) = 27.86 * Voltage^(-1.15)
  * Valid for GP2Y0A21YK0F sensor in the range 10-80cm.
  *
  * @param voltage Voltage value (V)

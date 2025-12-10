@@ -37,7 +37,13 @@ extern "C" {
 #define SHARP_SENSOR_ENABLE     1    // 1=Enable, 0=Disable
 
 /* SHARP Test Function */
-#define SHARP_TEST_ENABLE       1    // 1=Enable, 0=Disable
+#define SHARP_TEST_ENABLE       0    // 1=Enable, 0=Disable
+
+/* BNO055 IMU Sensor Driver */
+#define BNO055_ENABLE           1    // 1=Enable, 0=Disable
+
+/* BNO055 Test Function */
+#define BNO055_TEST_ENABLE      1    // 1=Enable, 0=Disable
 
 /* Future sensor modules can be added here */
 // #define LIDAR_ENABLE         1

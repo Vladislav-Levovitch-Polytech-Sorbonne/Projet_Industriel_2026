@@ -49,7 +49,6 @@ HAL_StatusTypeDef MMA8451_Init(I2C_HandleTypeDef *hi2c, uint8_t range)
 {
     HAL_StatusTypeDef status;
     uint8_t reg_data;
-    char uart_tx_buffer[150];
 
     // 1. Check device ID (WHO_AM_I register should return 0x1A)
     status = HAL_I2C_Mem_Read(hi2c, MMA8451_ADDRESS,

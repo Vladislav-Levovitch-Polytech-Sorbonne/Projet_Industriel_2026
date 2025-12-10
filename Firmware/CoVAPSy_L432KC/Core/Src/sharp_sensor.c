@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 
 /* Private variables ---------------------------------------------------------*/
 
@@ -85,8 +86,8 @@ float Sharp_ConvertToDistance(float voltage, uint8_t *out_of_range)
         return 0.0f;
     }
 
-    // Calculate distance using formula: D = 27.86 / (V - 0.42)
-    float distance = SHARP_DISTANCE_COEFF / (voltage - SHARP_VOLTAGE_OFFSET);
+    // Calculate distance using formula: D(cm) = 27.86 * V^(-1.15)
+    float distance = SHARP_DISTANCE_COEFF * powf(voltage, SHARP_POWER_EXPONENT);
 
     // Range validation: distance must be within sensor specification
     if (distance < SHARP_MIN_DISTANCE || distance > SHARP_MAX_DISTANCE) {
@@ -160,9 +161,9 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
     while (1) {
         sample_count++;
 
-        // Debug: Print all 4 ADC channels raw values
+        // Debug: Print RAW DMA buffer values for all channels
         snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-                 "[%04lu] RAW: CH0=%4u  CH1=%4u  CH2=%4u  CH3=%4u\r\n",
+                 "[%04lu] DMA_RAW: [0]=%4u  [1]=%4u  [2]=%4u  [3]=%4u\r\n",
                  sample_count,
                  sharp_adc_buffer[0], sharp_adc_buffer[1],
                  sharp_adc_buffer[2], sharp_adc_buffer[3]);
@@ -171,7 +172,7 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
         // Read sensor data from PA3 (channel index 0 = Rank 1)
         Sharp_ReadData(sharp_adc_buffer, 0, &sensor_data);
 
-        // Format output
+        // Format output with voltage and distance
         if (sensor_data.out_of_range) {
             snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
                      "       ADC=%4u  V=%5.3fV  Distance=OUT_OF_RANGE\r\n",

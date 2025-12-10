@@ -26,6 +26,7 @@
 #include "config.h"
 #include "mma8451.h"
 #include "sharp_sensor.h"
+#include "bno055.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -126,6 +127,11 @@ int main(void)
 #if defined(SHARP_SENSOR_ENABLE) && defined(SHARP_TEST_ENABLE) && SHARP_SENSOR_ENABLE && SHARP_TEST_ENABLE
   // Start SHARP distance sensor test program
   Sharp_Test(&hadc1, &huart2);
+#endif
+
+#if defined(BNO055_ENABLE) && defined(BNO055_TEST_ENABLE) && BNO055_ENABLE && BNO055_TEST_ENABLE
+  // Start BNO055 IMU test program
+  BNO055_Test(&hi2c1, &huart2);
 #endif
   /* USER CODE END 2 */
 
