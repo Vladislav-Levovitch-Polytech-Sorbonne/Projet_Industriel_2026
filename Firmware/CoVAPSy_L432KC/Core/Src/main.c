@@ -27,6 +27,8 @@
 #include "mma8451.h"
 #include "sharp_sensor.h"
 #include "bno055.h"
+#include "servo.h"
+#include "esc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -132,6 +134,16 @@ int main(void)
 #if defined(BNO055_ENABLE) && defined(BNO055_TEST_ENABLE) && BNO055_ENABLE && BNO055_TEST_ENABLE
   // Start BNO055 IMU test program
   BNO055_Test(&hi2c1, &huart2);
+#endif
+
+#if defined(SERVO_ENABLE) && defined(SERVO_TEST_ENABLE) && SERVO_ENABLE && SERVO_TEST_ENABLE
+  // Start Servo test program
+  Servo_Test(&htim1, &huart2);
+#endif
+
+#if defined(ESC_ENABLE) && defined(ESC_TEST_ENABLE) && ESC_ENABLE && ESC_TEST_ENABLE
+  // Start ESC test program
+  ESC_Test(&htim1, &huart2);
 #endif
   /* USER CODE END 2 */
 

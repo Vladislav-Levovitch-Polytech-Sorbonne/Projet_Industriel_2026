@@ -28,7 +28,7 @@ extern "C" {
 /* ============================================ */
 
 /* MMA8451 Accelerometer Driver */
-#define MMA8451_ENABLE          1    // 1=Enable, 0=Disable
+#define MMA8451_ENABLE          0    // 1=Enable, 0=Disable
 
 /* MMA8451 Test Function */
 #define MMA8451_TEST_ENABLE     0    // 1=Enable, 0=Disable
@@ -43,7 +43,22 @@ extern "C" {
 #define BNO055_ENABLE           1    // 1=Enable, 0=Disable
 
 /* BNO055 Test Function */
-#define BNO055_TEST_ENABLE      1    // 1=Enable, 0=Disable
+#define BNO055_TEST_ENABLE      0    // 1=Enable, 0=Disable
+
+/* Servo Driver */
+#define SERVO_ENABLE            1    // 1=Enable, 0=Disable
+
+/* Servo Test Function */
+#define SERVO_TEST_ENABLE       0    // 1=Enable, 0=Disable
+
+/* ESC (Electronic Speed Controller) Driver */
+#define ESC_ENABLE              1    // 1=Enable, 0=Disable
+
+/* ESC Test Function */
+#define ESC_TEST_ENABLE         1    // 1=Enable, 0=Disable
+
+/* ESC Bidirectional Mode (Forward/Brake/Reverse) */
+#define ESC_BIDIRECTIONAL_ENABLE 1   // 1=Bidirectional, 0=Forward Only
 
 /* Future sensor modules can be added here */
 // #define LIDAR_ENABLE         1
