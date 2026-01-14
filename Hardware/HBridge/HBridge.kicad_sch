@@ -593,6 +593,156 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Device:D_Schottky"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "D"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "D_Schottky"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Schottky diode"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "diode Schottky"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "D_Schottky_0_1"
+				(polyline
+					(pts
+						(xy -1.905 0.635) (xy -1.905 1.27) (xy -1.27 1.27) (xy -1.27 -1.27) (xy -0.635 -1.27) (xy -0.635 -0.635)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27)
+					)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy 1.27 0) (xy -1.27 0)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "D_Schottky_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "K"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Device:R"
 			(pin_numbers
 				(hide yes)
@@ -1434,6 +1584,18 @@
 		(uuid "4403548f-f02b-4b7a-b4cd-feabc4cd3ec4")
 	)
 	(junction
+		(at 200.66 138.43)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "4eb40c65-c6a4-4ab1-acd5-aaf787c9f2db")
+	)
+	(junction
+		(at 200.66 82.55)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "50fe09ec-b5fa-49e2-82e6-ba902b1a2b57")
+	)
+	(junction
 		(at 81.28 113.03)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -1668,6 +1830,16 @@
 			(type default)
 		)
 		(uuid "0d8c08be-13e4-4bce-97b7-98e3690a990c")
+	)
+	(wire
+		(pts
+			(xy 175.26 97.79) (xy 200.66 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "111e2f1b-ca79-4ec8-88d3-46a4c369b15b")
 	)
 	(wire
 		(pts
@@ -2011,6 +2183,16 @@
 	)
 	(wire
 		(pts
+			(xy 200.66 138.43) (xy 207.01 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4d002bef-1d6c-4f18-b07e-9c53f4b68a81")
+	)
+	(wire
+		(pts
 			(xy 69.85 142.24) (xy 72.39 142.24)
 		)
 		(stroke
@@ -2041,6 +2223,16 @@
 	)
 	(wire
 		(pts
+			(xy 200.66 82.55) (xy 210.82 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "54ea6359-a50c-4bbc-9967-49abfa13b23d")
+	)
+	(wire
+		(pts
 			(xy 55.88 59.69) (xy 67.31 59.69)
 		)
 		(stroke
@@ -2061,17 +2253,7 @@
 	)
 	(wire
 		(pts
-			(xy 138.43 80.01) (xy 138.43 97.79)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "5b3356bc-399a-4d7f-8aae-d3f7210f5c0d")
-	)
-	(wire
-		(pts
-			(xy 198.12 82.55) (xy 210.82 82.55)
+			(xy 198.12 82.55) (xy 200.66 82.55)
 		)
 		(stroke
 			(width 0)
@@ -2441,6 +2623,16 @@
 	)
 	(wire
 		(pts
+			(xy 167.64 97.79) (xy 138.43 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a2126eb4-ad27-4889-a9f4-9c6b4d3f2e8b")
+	)
+	(wire
+		(pts
 			(xy 125.73 137.16) (xy 125.73 138.43)
 		)
 		(stroke
@@ -2511,7 +2703,7 @@
 	)
 	(wire
 		(pts
-			(xy 198.12 138.43) (xy 207.01 138.43)
+			(xy 198.12 138.43) (xy 200.66 138.43)
 		)
 		(stroke
 			(width 0)
@@ -2608,6 +2800,16 @@
 			(type default)
 		)
 		(uuid "b8f8b571-36c0-40af-a384-3f3cfc8ea6c2")
+	)
+	(wire
+		(pts
+			(xy 172.72 153.67) (xy 200.66 153.67)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b8fa6ee2-4f44-4898-9207-475384f83246")
 	)
 	(wire
 		(pts
@@ -2801,6 +3003,26 @@
 	)
 	(wire
 		(pts
+			(xy 200.66 97.79) (xy 200.66 82.55)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "dd25744c-3031-4b89-a309-f09ca1367014")
+	)
+	(wire
+		(pts
+			(xy 200.66 153.67) (xy 200.66 138.43)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e0504766-2f75-4fed-8247-2da199f0d5f7")
+	)
+	(wire
+		(pts
 			(xy 53.34 134.62) (xy 53.34 143.51)
 		)
 		(stroke
@@ -2828,6 +3050,16 @@
 			(type default)
 		)
 		(uuid "e587f748-a0e8-482e-923a-5eecda18ab21")
+	)
+	(wire
+		(pts
+			(xy 134.62 153.67) (xy 165.1 153.67)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e6640e0d-0e0f-4e23-817d-0f587162ca5c")
 	)
 	(wire
 		(pts
@@ -2888,6 +3120,16 @@
 			(type default)
 		)
 		(uuid "f50b831e-2ccc-4a8e-b34c-e8ca9c51bba2")
+	)
+	(wire
+		(pts
+			(xy 138.43 80.01) (xy 138.43 97.79)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "fa56f241-740b-4f92-bc36-81bea727aec0")
 	)
 	(wire
 		(pts
@@ -4010,6 +4252,74 @@
 			(project "HBridge"
 				(path "/cae0d301-ea33-4e3c-a36c-9b3f252ab890"
 					(reference "R10")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D_Schottky")
+		(at 168.91 153.67 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "3a40bc18-6ab6-4682-b8b8-c601ed6e1d05")
+		(property "Reference" "D6"
+			(at 168.5925 147.32 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D_Schottky"
+			(at 168.5925 149.86 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-220-2_Vertical"
+			(at 168.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 168.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Schottky diode"
+			(at 168.91 153.67 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c092d777-5864-404e-b129-3460d41b50d1")
+		)
+		(pin "2"
+			(uuid "b23d1734-565f-4850-b9c9-5c5db746fc0c")
+		)
+		(instances
+			(project ""
+				(path "/cae0d301-ea33-4e3c-a36c-9b3f252ab890"
+					(reference "D6")
 					(unit 1)
 				)
 			)
@@ -5616,6 +5926,74 @@
 			(project "HBridge"
 				(path "/cae0d301-ea33-4e3c-a36c-9b3f252ab890"
 					(reference "C8")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:D_Schottky")
+		(at 171.45 97.79 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "fc40c8ab-c419-46b8-83a2-94c05870b511")
+		(property "Reference" "D5"
+			(at 171.1325 91.44 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "D_Schottky"
+			(at 171.1325 93.98 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-220-2_Vertical"
+			(at 171.45 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 171.45 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Schottky diode"
+			(at 171.45 97.79 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9332e936-4001-4c82-b787-fd32c91960c9")
+		)
+		(pin "2"
+			(uuid "c5d5e707-47ba-49b1-812e-203ea92ab594")
+		)
+		(instances
+			(project ""
+				(path "/cae0d301-ea33-4e3c-a36c-9b3f252ab890"
+					(reference "D5")
 					(unit 1)
 				)
 			)

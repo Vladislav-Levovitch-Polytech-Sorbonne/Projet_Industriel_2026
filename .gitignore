@@ -8,5 +8,13 @@
 venv/
 
 
-# Kicad files
-HBridge-backups/
+# Temporary KiCad files
+*-save.kicad_pcb
+*-backups/
+fp-info-cache
+*.pyc
+
+# # Gerber files
+# *.gbr
+# *.gbrjob
+# *.pdf
