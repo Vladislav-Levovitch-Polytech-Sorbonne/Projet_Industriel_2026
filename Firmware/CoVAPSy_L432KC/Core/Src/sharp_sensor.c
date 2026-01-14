@@ -120,25 +120,26 @@ void Sharp_ReadData(uint16_t *dma_buffer, uint32_t channel_index, Sharp_Data *da
 void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
 {
     uint32_t sample_count = 0;
-    Sharp_Data sensor_data;
-    char uart_tx_buffer[200];
-    static uint16_t sharp_adc_buffer[4] = {0};  // DMA buffer for 4 ADC channels (HALFWORD)
+    Sharp_Data sensor_left;   // PA3 (ADC_IN8) - Rear Left
+    Sharp_Data sensor_right;  // PA4 (ADC_IN9) - Rear Right
+    char uart_tx_buffer[250];
+    static uint16_t sharp_adc_buffer[2] = {0};  // DMA buffer for 2 ADC channels (PA3, PA4)
 
     // Print header
     snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
              "\r\n========================================\r\n"
-             "  CoVAPSy SHARP Sensor Test\r\n"
+             "  CoVAPSy SHARP Sensor Test (Dual)\r\n"
              "  Model: GP2Y0A21YK0F (10-80cm)\r\n"
              "========================================\r\n\r\n");
     HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
     // Initialization message
     snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-             "[INFO] Initializing SHARP GP2Y0A21YK0F...\r\n");
+             "[INFO] Initializing SHARP sensors...\r\n");
     HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
     // Initialize ADC-DMA
-    if (Sharp_Init(hadc, sharp_adc_buffer, 4) != HAL_OK) {
+    if (Sharp_Init(hadc, sharp_adc_buffer, 2) != HAL_OK) {
         snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
                  "[FATAL] ADC initialization failed! Check hardware connection.\r\n");
         HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
@@ -152,45 +153,55 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
     // Success message
     snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
              "[OK] ADC1 initialized! DMA continuous mode active.\r\n"
-             "[OK] Channel: PA3 (ADC1_IN8, Rank 1)\r\n"
+             "[OK] Channel 0: PA3 (ADC_IN8) - Rear Left\r\n"
+             "[OK] Channel 1: PA4 (ADC_IN9) - Rear Right\r\n"
              "[INFO] Starting continuous reading...\r\n"
-             "----------------------------------------\r\n");
+             "========================================\r\n");
     HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
     // Main loop
     while (1) {
         sample_count++;
 
-        // Debug: Print RAW DMA buffer values for all channels
+        // Read both sensor data
+        Sharp_ReadData(sharp_adc_buffer, 0, &sensor_left);   // PA3 (ADC_IN8, Channel 0)
+        Sharp_ReadData(sharp_adc_buffer, 1, &sensor_right);  // PA4 (ADC_IN9, Channel 1)
+
+        // Print sample header with DMA raw values
         snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-                 "[%04lu] DMA_RAW: [0]=%4u  [1]=%4u  [2]=%4u  [3]=%4u\r\n",
+                 "[%04lu] DMA_RAW: [0]=%4u [1]=%4u\r\n",
                  sample_count,
-                 sharp_adc_buffer[0], sharp_adc_buffer[1],
-                 sharp_adc_buffer[2], sharp_adc_buffer[3]);
+                 sharp_adc_buffer[0], sharp_adc_buffer[1]);
         HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
-        // Read sensor data from PA3 (channel index 0 = Rank 1)
-        Sharp_ReadData(sharp_adc_buffer, 0, &sensor_data);
-
-        // Format output with voltage and distance
-        if (sensor_data.out_of_range) {
+        // Print Left sensor data
+        if (sensor_left.out_of_range) {
             snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-                     "       ADC=%4u  V=%5.3fV  Distance=OUT_OF_RANGE\r\n",
-                     sensor_data.adc_raw, sensor_data.voltage);
+                     "  LEFT:  ADC=%4u V=%5.3fV Dist=OUT_OF_RANGE\r\n",
+                     sensor_left.adc_raw, sensor_left.voltage);
         } else {
             snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-                     "       ADC=%4u  V=%5.3fV  Distance=%5.1fcm\r\n",
-                     sensor_data.adc_raw,
-                     sensor_data.voltage, sensor_data.distance_cm);
+                     "  LEFT:  ADC=%4u V=%5.3fV Dist=%5.1fcm\r\n",
+                     sensor_left.adc_raw, sensor_left.voltage, sensor_left.distance_cm);
         }
+        HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
-        // Transmit data via UART
+        // Print Right sensor data
+        if (sensor_right.out_of_range) {
+            snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
+                     "  RIGHT: ADC=%4u V=%5.3fV Dist=OUT_OF_RANGE\r\n",
+                     sensor_right.adc_raw, sensor_right.voltage);
+        } else {
+            snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
+                     "  RIGHT: ADC=%4u V=%5.3fV Dist=%5.1fcm\r\n",
+                     sensor_right.adc_raw, sensor_right.voltage, sensor_right.distance_cm);
+        }
         HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
 
         // Print separator every 10 samples
         if (sample_count % 10 == 0) {
             snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
-                     "----------------------------------------\r\n");
+                     "========================================\r\n");
             HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
         }
 

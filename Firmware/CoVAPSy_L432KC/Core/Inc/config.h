@@ -37,7 +37,7 @@ extern "C" {
 #define SHARP_SENSOR_ENABLE     1    // 1=Enable, 0=Disable
 
 /* SHARP Test Function */
-#define SHARP_TEST_ENABLE       0    // 1=Enable, 0=Disable
+#define SHARP_TEST_ENABLE       0    // 1=Enable, 0=Disable (Dual sensor test)
 
 /* BNO055 IMU Sensor Driver */
 #define BNO055_ENABLE           1    // 1=Enable, 0=Disable
@@ -49,16 +49,22 @@ extern "C" {
 #define SERVO_ENABLE            1    // 1=Enable, 0=Disable
 
 /* Servo Test Function */
-#define SERVO_TEST_ENABLE       0    // 1=Enable, 0=Disable
+#define SERVO_TEST_ENABLE       0    // 1=Enable, 0=Disable (set to 0 for vehicle test)
 
 /* ESC (Electronic Speed Controller) Driver */
 #define ESC_ENABLE              1    // 1=Enable, 0=Disable
 
 /* ESC Test Function */
-#define ESC_TEST_ENABLE         1    // 1=Enable, 0=Disable
+#define ESC_TEST_ENABLE         0    // 1=Enable, 0=Disable (set to 0 for vehicle test)
 
 /* ESC Bidirectional Mode (Forward/Brake/Reverse) */
 #define ESC_BIDIRECTIONAL_ENABLE 1   // 1=Bidirectional, 0=Forward Only
+
+/* Vehicle Control Layer */
+#define VEHICLE_ENABLE          1    // 1=Enable, 0=Disable
+
+/* Vehicle Test Function */
+#define VEHICLE_TEST_ENABLE     1    // 1=Enable, 0=Disable
 
 /* Future sensor modules can be added here */
 // #define LIDAR_ENABLE         1

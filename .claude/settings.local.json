@@ -5,7 +5,8 @@
       "WebFetch(domain:ajuton-ens.github.io)",
       "WebFetch(domain:ens-paris-saclay.fr)",
       "Bash(python -c:*)",
-      "Bash(python create_io_bilan.py:*)"
+      "Bash(python create_io_bilan.py:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
