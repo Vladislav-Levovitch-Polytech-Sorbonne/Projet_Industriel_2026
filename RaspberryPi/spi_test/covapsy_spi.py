@@ -5,6 +5,13 @@ CoVAPSy SPI Communication Library
 
 SPI communication library for Raspberry Pi 4B to control CoVAPSy autonomous vehicle.
 
+Hardware Connection:
+    Pi Pin 19 (MOSI) -> STM32 PB5 (MOSI)
+    Pi Pin 21 (MISO) <- STM32 PB4 (MISO)
+    Pi Pin 23 (SCLK) -> STM32 PB3 (SCK)
+    Pi Pin 24 (CE0)  -> STM32 PA4 (NSS)
+    Pi Pin 6  (GND)  -- STM32 GND
+
 Protocol:
 - Frame size: 32 bytes fixed
 - CRC: CRC-16/MODBUS
