@@ -85,7 +85,7 @@ HAL_StatusTypeDef Sharp_Init(ADC_HandleTypeDef *hadc,
  * @brief Read raw ADC value from DMA buffer
  *
  * @param dma_buffer Pointer to DMA buffer array (uint16_t for HALFWORD DMA)
- * @param channel_index Channel index in DMA buffer (0 for PA3/ADC1_IN8)
+ * @param channel_index Channel index in DMA buffer (0=PA3/ADC_IN8, 1=PA6/ADC_IN11)
  * @return Raw ADC value (0-4095)
  */
 uint16_t Sharp_ReadRaw(uint16_t *dma_buffer, uint32_t channel_index);
@@ -120,7 +120,7 @@ float Sharp_ConvertToDistance(float voltage, uint8_t *out_of_range);
  * 4. Check range validity
  *
  * @param dma_buffer Pointer to DMA buffer array (uint16_t for HALFWORD DMA)
- * @param channel_index Channel index in DMA buffer (0 for PA3/ADC1_IN8)
+ * @param channel_index Channel index in DMA buffer (0=PA3/ADC_IN8, 1=PA6/ADC_IN11)
  * @param data Pointer to Sharp_Data structure to store results
  */
 void Sharp_ReadData(uint16_t *dma_buffer, uint32_t channel_index, Sharp_Data *data);

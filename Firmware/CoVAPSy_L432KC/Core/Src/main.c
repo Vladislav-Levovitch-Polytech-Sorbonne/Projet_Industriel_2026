@@ -30,6 +30,7 @@
 #include "servo.h"
 #include "esc.h"
 #include "vehicle_state.h"
+#include "spi_comm.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -147,9 +148,32 @@ int main(void)
   ESC_Test(&htim1, &huart2);
 #endif
 
+#if defined(SPI_COMM_ENABLE) && defined(SPI_COMM_TEST_ENABLE) && SPI_COMM_ENABLE && SPI_COMM_TEST_ENABLE
+  // Start SPI communication test program (Phase 2 UART simulation mode, protocol-only)
+  SPI_Comm_Test(&hspi3, &huart2);
+#endif
+
+#if defined(SPI_COMM_ENABLE) && defined(SPI_VEHICLE_TEST_ENABLE) && SPI_COMM_ENABLE && SPI_VEHICLE_TEST_ENABLE
+  // Start SPI + Vehicle integration test (UART commands control real vehicle)
+  // This simulates Raspberry Pi SPI commands via UART
+  SPI_Vehicle_IntegrationTest(&htim1, &hi2c1, &hadc1, &huart2);
+#endif
+
 #if defined(VEHICLE_ENABLE) && defined(VEHICLE_TEST_ENABLE) && VEHICLE_ENABLE && VEHICLE_TEST_ENABLE
   // Start Vehicle test program (Phase 1 whole vehicle testing)
   Vehicle_Test(&htim1, &hi2c1, &hadc1, &huart2);
+#endif
+
+#if defined(SPI_COMM_ENABLE) && defined(SPI_HARDWARE_DEBUG_ENABLE) && SPI_COMM_ENABLE && SPI_HARDWARE_DEBUG_ENABLE
+  // SPI Hardware Debug Mode: Real SPI communication with UART debug output
+  // Connects to Raspberry Pi via SPI3, prints received commands to UART
+  SPI_Hardware_Debug(&hspi3, &htim1, &hi2c1, &hadc1, &huart2);
+#endif
+
+#if defined(SPI_COMM_ENABLE) && defined(SPI_PRODUCTION_ENABLE) && SPI_COMM_ENABLE && SPI_PRODUCTION_ENABLE
+  // SPI Production Mode: Real SPI communication, NO debug output
+  // Use this for final deployment with Raspberry Pi
+  SPI_Production(&hspi3, &htim1, &hi2c1, &hadc1);
 #endif
   /* USER CODE END 2 */
 
@@ -269,7 +293,7 @@ static void MX_ADC1_Init(void)
 
   /** Configure Regular Channel
   */
-  sConfig.Channel = ADC_CHANNEL_9;
+  sConfig.Channel = ADC_CHANNEL_6;
   sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
@@ -351,7 +375,7 @@ static void MX_SPI3_Init(void)
   hspi3.Init.DataSize = SPI_DATASIZE_8BIT;
   hspi3.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi3.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi3.Init.NSS = SPI_NSS_SOFT;
+  hspi3.Init.NSS = SPI_NSS_HARD_INPUT;
   hspi3.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi3.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi3.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
