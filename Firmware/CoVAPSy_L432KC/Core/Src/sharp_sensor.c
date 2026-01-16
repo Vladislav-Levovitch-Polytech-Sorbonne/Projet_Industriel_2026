@@ -121,9 +121,9 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
 {
     uint32_t sample_count = 0;
     Sharp_Data sensor_left;   // PA3 (ADC_IN8) - Rear Left
-    Sharp_Data sensor_right;  // PA4 (ADC_IN9) - Rear Right
+    Sharp_Data sensor_right;  // PA6 (ADC_IN11) - Rear Right
     char uart_tx_buffer[250];
-    static uint16_t sharp_adc_buffer[2] = {0};  // DMA buffer for 2 ADC channels (PA3, PA4)
+    static uint16_t sharp_adc_buffer[2] = {0};  // DMA buffer for 2 ADC channels (PA3, PA6)
 
     // Print header
     snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
@@ -154,7 +154,7 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
     snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),
              "[OK] ADC1 initialized! DMA continuous mode active.\r\n"
              "[OK] Channel 0: PA3 (ADC_IN8) - Rear Left\r\n"
-             "[OK] Channel 1: PA4 (ADC_IN9) - Rear Right\r\n"
+             "[OK] Channel 1: PA6 (ADC_IN11) - Rear Right\r\n"
              "[INFO] Starting continuous reading...\r\n"
              "========================================\r\n");
     HAL_UART_Transmit(huart, (uint8_t*)uart_tx_buffer, strlen(uart_tx_buffer), 100);
@@ -165,7 +165,7 @@ void Sharp_Test(ADC_HandleTypeDef *hadc, UART_HandleTypeDef *huart)
 
         // Read both sensor data
         Sharp_ReadData(sharp_adc_buffer, 0, &sensor_left);   // PA3 (ADC_IN8, Channel 0)
-        Sharp_ReadData(sharp_adc_buffer, 1, &sensor_right);  // PA4 (ADC_IN9, Channel 1)
+        Sharp_ReadData(sharp_adc_buffer, 1, &sensor_right);  // PA6 (ADC_IN11, Channel 1)
 
         // Print sample header with DMA raw values
         snprintf(uart_tx_buffer, sizeof(uart_tx_buffer),

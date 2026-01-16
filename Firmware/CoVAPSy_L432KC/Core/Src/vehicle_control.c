@@ -22,6 +22,11 @@
 
 #include "vehicle_state.h"
 
+/* SPI Communication Integration (Phase 2) */
+#if SPI_COMM_ENABLE
+#include "spi_comm.h"
+#endif
+
 #if VEHICLE_ENABLE
 
 /* ============================================ */
@@ -136,7 +141,7 @@ HAL_StatusTypeDef Vehicle_UpdateSensors(Vehicle_State *vehicle)
     vehicle->sharp_left_distance_cm = vehicle->sharp_left_data.distance_cm;
     vehicle->sharp_left_valid = (vehicle->sharp_left_data.out_of_range == 0) ? 1 : 0;
 
-    Sharp_ReadData(vehicle->sharp_dma_buffer, 1, &vehicle->sharp_right_data);  // Channel 1 = PA4/ADC_IN9
+    Sharp_ReadData(vehicle->sharp_dma_buffer, 1, &vehicle->sharp_right_data);  // Channel 1 = PA6/ADC_IN11
     vehicle->sharp_right_distance_cm = vehicle->sharp_right_data.distance_cm;
     vehicle->sharp_right_valid = (vehicle->sharp_right_data.out_of_range == 0) ? 1 : 0;
 
@@ -246,6 +251,8 @@ HAL_StatusTypeDef Vehicle_CheckSafety(Vehicle_State *vehicle)
     // === Safety Check 1: Watchdog Timeout (500ms no command) ===
     // Note: Only enabled in REMOTE mode (waiting for Raspberry Pi commands)
     // In MANUAL mode, watchdog is disabled for testing purposes
+    // Configurable via VEHICLE_WATCHDOG_ENABLE in config.h
+#if VEHICLE_WATCHDOG_ENABLE
     if (vehicle->mode == VEHICLE_MODE_REMOTE) {
         uint32_t time_since_last_cmd = HAL_GetTick() - vehicle->last_command_timestamp;
         if (time_since_last_cmd > VEHICLE_WATCHDOG_TIMEOUT_MS) {
@@ -258,6 +265,7 @@ HAL_StatusTypeDef Vehicle_CheckSafety(Vehicle_State *vehicle)
             return HAL_ERROR;
         }
     }
+#endif /* VEHICLE_WATCHDOG_ENABLE */
 
     // === Safety Check 2: Rear Obstacle Detection During Reversing (SHARP) ===
     if (vehicle->is_reversing) {
@@ -326,6 +334,16 @@ HAL_StatusTypeDef Vehicle_ControlLoop(Vehicle_State *vehicle)
 
     // 1. Increment control loop counter
     vehicle->control_loop_counter++;
+
+    // 1.5. SPI Communication Integration (Phase 2)
+    // In REMOTE mode, read control data from SPI (Raspberry Pi)
+    // This updates target_steering_deg and target_throttle_percent
+#if SPI_COMM_ENABLE
+    if (vehicle->mode == VEHICLE_MODE_REMOTE && g_spi_comm_ptr != NULL) {
+        // Read SPI data and apply control values
+        SPI_Comm_UpdateVehicleControl(g_spi_comm_ptr, vehicle);
+    }
+#endif
 
     // 2. Safety check (highest priority)
     if (Vehicle_CheckSafety(vehicle) != HAL_OK) {
@@ -478,7 +496,7 @@ void Vehicle_Test(TIM_HandleTypeDef *htim, I2C_HandleTypeDef *hi2c,
     char uart_tx_buffer[250];
     Vehicle_State vehicle = {0};  // Zero-initialize
 
-    // DMA buffer for SHARP sensors (2 channels: PA3, PA4)
+    // DMA buffer for SHARP sensors (2 channels: PA3, PA6)
     static uint16_t sharp_adc_dma_buffer[2];
 
     // === Step 1: Initialize Vehicle ===

@@ -114,7 +114,7 @@ Vehicle_PrintStatus()
 | 传感器 | 型号 | 接口 | 引脚 | 用途 |
 |--------|------|------|------|------|
 | 后左距离传感器 | SHARP GP2Y0A21YK0F | ADC | PA3 (ADC_IN8) | 倒车障碍检测 |
-| 后右距离传感器 | SHARP GP2Y0A21YK0F | ADC | PA4 (ADC_IN9) | 倒车障碍检测 |
+| 后右距离传感器 | SHARP GP2Y0A21YK0F | ADC | PA1 (ADC1_IN6) | 倒车障碍检测 |
 | 9 轴 IMU | BNO055 | I2C | PB6/PB7 (I2C1) | 姿态监控 |
 
 **SHARP 传感器规格**:
@@ -533,8 +533,12 @@ if (target_throttle < -5.0f && current_throttle >= -5.0f)
 **解决方案**:
 - 用户在 STM32CubeMX 中修改配置
 - Number of Conversions: 4 → **2**
-- 仅保留 ADC_IN8 (PA3) 和 ADC_IN9 (PA4)
+- 仅保留 ADC_IN8 (PA3) 和 ADC1_IN6 (PA1)
 
+**历史注记**:
+- 原配置使用 PA5 (ADC_IN10)，但该引脚与板载 LED 冲突
+- 现已改用 PA1 (ADC1_IN6)
+ 
 **验证结果**: ✅ 配置匹配，无内存越界风险
 
 ---

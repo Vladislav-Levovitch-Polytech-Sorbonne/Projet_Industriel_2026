@@ -102,7 +102,7 @@ typedef struct {
     UART_HandleTypeDef *huart_debug;   // UART2 (for debug output)
 
     /* === ADC DMA Buffer for SHARP Sensors === */
-    uint16_t *sharp_dma_buffer;        // DMA buffer for ADC (2 channels: PA3, PA4)
+    uint16_t *sharp_dma_buffer;        // DMA buffer for ADC (2 channels: PA3, PA6)
     uint32_t sharp_dma_buffer_size;    // DMA buffer size (typically 2)
 
     /* === Driver Data Structures === */

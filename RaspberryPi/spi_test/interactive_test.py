@@ -290,24 +290,35 @@ Notes:
             print("[LOOP] Stopped")
 
     def _loop_worker(self):
-        """Background loop worker thread."""
+        """Background loop worker thread.
+
+        Uses set_control_fast() for higher throughput - accepts that
+        responses are delayed by one frame (SPI full-duplex characteristic).
+        """
         interval = 1.0 / self.loop_hz
         count = 0
+        valid_count = 0
         start_time = time.time()
 
         while self.loop_running:
             try:
-                # Send control command with current values
-                self.spi.set_control(self.loop_steering, self.loop_throttle)
+                # Send control command with current values (fast mode - no fetch)
+                # Response is for PREVIOUS command, which is fine for continuous mode
+                result = self.spi.set_control_fast(self.loop_steering, self.loop_throttle)
                 count += 1
+
+                # Count valid responses
+                if result.get('valid', False):
+                    valid_count += 1
 
                 # Print status every second
                 elapsed = time.time() - start_time
                 if elapsed >= 1.0:
                     actual_hz = count / elapsed
                     stats = self.spi.get_statistics()
-                    print(f"\r[LOOP] {actual_hz:.1f} Hz | TX:{stats['tx_count']} RX:{stats['rx_count']} ERR:{stats['crc_errors']}    ", end='', flush=True)
+                    print(f"\r[LOOP] {actual_hz:.1f} Hz | TX:{stats['tx_count']} RX:{valid_count} ERR:{stats['frame_errors']}    ", end='', flush=True)
                     count = 0
+                    valid_count = 0
                     start_time = time.time()
 
                 # Wait for next interval

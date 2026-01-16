@@ -139,6 +139,15 @@ class CoVAPSySPI:
     - CRC-16/MODBUS validation
     - All vehicle commands supported
     - Response parsing and validation
+    - Handles SPI full-duplex "one frame delay" characteristic
+
+    IMPORTANT: SPI Full-Duplex Timing
+    ---------------------------------
+    Due to SPI full-duplex nature, the response received during a transfer
+    is for the PREVIOUS command, not the current one. This class handles
+    this by using a "fetch response" mechanism:
+    - Each command sends the actual command frame
+    - Then sends a HEARTBEAT to fetch the real response
 
     Usage:
         spi = CoVAPSySPI()
@@ -167,6 +176,9 @@ class CoVAPSySPI:
         self.rx_count = 0
         self.crc_errors = 0
         self.frame_errors = 0
+
+        # SPI full-duplex: store last response for debugging
+        self._last_raw_response = None
 
     def open(self) -> bool:
         """
@@ -349,15 +361,18 @@ class CoVAPSySPI:
 
         return data
 
-    def _transfer(self, tx_frame: bytes) -> bytes:
+    def _transfer_raw(self, tx_frame: bytes) -> bytes:
         """
-        Perform SPI transfer (send and receive).
+        Perform raw SPI transfer (single frame, no fetch).
+
+        This is the low-level transfer that sends one frame and
+        receives whatever the slave has in its TX buffer.
 
         Args:
             tx_frame: Frame to send
 
         Returns:
-            Received frame
+            Received frame (response to PREVIOUS command)
         """
         self.tx_count += 1
 
@@ -369,7 +384,53 @@ class CoVAPSySPI:
 
         # Full duplex transfer
         rx_data = self.spi.xfer2(list(tx_frame))
+        self._last_raw_response = bytes(rx_data)
         return bytes(rx_data)
+
+    def _transfer(self, tx_frame: bytes) -> bytes:
+        """
+        Perform SPI transfer with response fetch.
+
+        Due to SPI full-duplex nature, the response for a command is
+        received during the NEXT transfer. This method handles this by:
+        1. Sending the actual command frame (ignore response - it's for previous cmd)
+        2. Wait for STM32 DMA to restart
+        3. Sending a HEARTBEAT frame to fetch the actual response
+
+        Args:
+            tx_frame: Frame to send
+
+        Returns:
+            Received frame (response to the command we just sent)
+        """
+        # Step 1: Send the actual command
+        # The response here is for the PREVIOUS command, so we ignore it
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait for STM32 DMA to restart (critical!)
+        # STM32 needs time to process the frame and restart DMA
+        time.sleep(0.002)  # 2ms delay
+
+        # Step 3: Send HEARTBEAT to fetch the response for our command
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_data = self._transfer_raw(heartbeat_frame)
+
+        return rx_data
+
+    def _transfer_no_fetch(self, tx_frame: bytes) -> bytes:
+        """
+        Perform SPI transfer without fetching response.
+
+        Use this for continuous/loop mode where you want to
+        accept the "one frame delay" characteristic.
+
+        Args:
+            tx_frame: Frame to send
+
+        Returns:
+            Received frame (response to PREVIOUS command)
+        """
+        return self._transfer_raw(tx_frame)
 
     # ============================================
     # Command Methods
@@ -378,6 +439,8 @@ class CoVAPSySPI:
     def set_control(self, steering: float, throttle: float) -> Dict[str, Any]:
         """
         Set vehicle steering and throttle.
+
+        This method fetches the actual response by sending an extra HEARTBEAT.
 
         Args:
             steering: Steering angle in degrees (-30 to +30)
@@ -396,6 +459,33 @@ class CoVAPSySPI:
         # Build and send frame
         tx_frame = self.build_frame(CMD_SET_CONTROL, payload)
         rx_frame = self._transfer(tx_frame)
+
+        return self.parse_response(rx_frame)
+
+    def set_control_fast(self, steering: float, throttle: float) -> Dict[str, Any]:
+        """
+        Set vehicle steering and throttle (fast mode, no response fetch).
+
+        Use this in continuous/loop mode for higher throughput.
+        The response returned is for the PREVIOUS command, not this one.
+
+        Args:
+            steering: Steering angle in degrees (-30 to +30)
+            throttle: Throttle percentage (-100 to +100)
+
+        Returns:
+            Parsed response dictionary (for PREVIOUS command)
+        """
+        # Clamp values
+        steering = max(-30.0, min(30.0, steering))
+        throttle = max(-100.0, min(100.0, throttle))
+
+        # Pack payload (big-endian floats)
+        payload = struct.pack('>ff', steering, throttle)
+
+        # Build and send frame (no fetch)
+        tx_frame = self.build_frame(CMD_SET_CONTROL, payload)
+        rx_frame = self._transfer_no_fetch(tx_frame)
 
         return self.parse_response(rx_frame)
 
