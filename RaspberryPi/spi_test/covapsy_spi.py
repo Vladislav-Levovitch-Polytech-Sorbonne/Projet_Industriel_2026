@@ -540,7 +540,17 @@ class CoVAPSySPI:
 
         payload = bytes([mode])
         tx_frame = self.build_frame(CMD_SET_MODE, payload)
-        rx_frame = self._transfer(tx_frame)
+
+        # Step 1: Send command
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait for STM32 to process (mode changes have UART output)
+        time.sleep(0.1)  # 100ms delay
+
+        # Step 3: Send HEARTBEAT to fetch response
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_frame = self._transfer_raw(heartbeat_frame)
+
         return self.parse_response(rx_frame)
 
     def emergency_stop(self) -> Dict[str, Any]:
@@ -556,7 +566,17 @@ class CoVAPSySPI:
             Parsed response dictionary
         """
         tx_frame = self.build_frame(CMD_EMERGENCY_STOP)
-        rx_frame = self._transfer(tx_frame)
+
+        # Step 1: Send command
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait for STM32 to process (emergency stop has UART output)
+        time.sleep(0.1)  # 100ms delay
+
+        # Step 3: Send HEARTBEAT to fetch response
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_frame = self._transfer_raw(heartbeat_frame)
+
         return self.parse_response(rx_frame)
 
     def heartbeat(self) -> Dict[str, Any]:
@@ -583,21 +603,7 @@ class CoVAPSySPI:
         Returns:
             Parsed response dictionary
         """
-        # Send SET_MODE IDLE command
-        payload = bytes([MODE_IDLE])
-        tx_frame = self.build_frame(CMD_SET_MODE, payload)
-
-        # Step 1: Send command (ignore response - it's for previous cmd)
-        _ = self._transfer_raw(tx_frame)
-
-        # Step 2: Wait longer for STM32 to process recovery (UART output takes time)
-        time.sleep(0.15)  # 150ms delay (recovery has extra UART output)
-
-        # Step 3: Send HEARTBEAT to fetch response
-        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
-        rx_frame = self._transfer_raw(heartbeat_frame)
-
-        return self.parse_response(rx_frame)
+        return self.set_mode(MODE_IDLE)
 
     def reset_and_resume(self) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
         """
