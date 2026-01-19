@@ -223,7 +223,31 @@ HAL_StatusTypeDef Vehicle_SetMode(Vehicle_State *vehicle, Vehicle_Mode mode)
         return HAL_ERROR;
     }
 
+    // Recovery from EMERGENCY mode - only allow switching to IDLE first
+    if (vehicle->mode == VEHICLE_MODE_EMERGENCY) {
+        if (mode == VEHICLE_MODE_IDLE) {
+            // Clear safety flag when recovering to IDLE
+            vehicle->safety_stop_triggered = 0;
+            vehicle->target_steering_deg = 0.0f;
+            vehicle->target_throttle_percent = 0.0f;
+            vehicle->is_reversing = 0;
+
+            char msg[] = "[Vehicle] Recovery from EMERGENCY - safety flag cleared\r\n";
+            HAL_UART_Transmit(vehicle->huart_debug, (uint8_t*)msg, strlen(msg), 100);
+        } else if (mode != VEHICLE_MODE_EMERGENCY) {
+            // Must go through IDLE first
+            char msg[] = "[Vehicle] ERROR: Must switch to IDLE before other modes\r\n";
+            HAL_UART_Transmit(vehicle->huart_debug, (uint8_t*)msg, strlen(msg), 100);
+            return HAL_ERROR;
+        }
+    }
+
     vehicle->mode = mode;
+
+    // Update watchdog timestamp when entering REMOTE mode
+    if (mode == VEHICLE_MODE_REMOTE) {
+        vehicle->last_command_timestamp = HAL_GetTick();
+    }
 
     // UART output mode change
     char msg[80];

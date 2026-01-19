@@ -573,6 +573,36 @@ class CoVAPSySPI:
         rx_frame = self._transfer(tx_frame)
         return self.parse_response(rx_frame)
 
+    def reset(self) -> Dict[str, Any]:
+        """
+        Reset vehicle from EMERGENCY mode to IDLE mode.
+        Clears safety_stop_triggered flag on STM32 side.
+
+        Recovery sequence: EMERGENCY -> reset() -> IDLE -> set_mode(REMOTE) -> REMOTE
+
+        Returns:
+            Parsed response dictionary
+        """
+        return self.set_mode(MODE_IDLE)
+
+    def reset_and_resume(self) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Full recovery: EMERGENCY -> IDLE -> REMOTE in one call.
+
+        Returns:
+            Tuple of (reset_result, resume_result)
+            resume_result is None if reset failed
+        """
+        reset_result = self.reset()
+
+        if not reset_result.get('valid', False):
+            return reset_result, None
+
+        time.sleep(0.05)  # 50ms delay
+        resume_result = self.set_mode(MODE_REMOTE)
+
+        return reset_result, resume_result
+
     def get_statistics(self) -> Dict[str, int]:
         """
         Get communication statistics.

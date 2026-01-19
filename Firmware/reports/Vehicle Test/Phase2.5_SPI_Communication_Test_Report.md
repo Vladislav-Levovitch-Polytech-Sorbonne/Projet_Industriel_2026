@@ -640,7 +640,7 @@ Phase 2 SPI 通信测试**完全成功**：
 | `SPI_COMM_USE_HARDWARE` | 使用真实 SPI 硬件 | 1 | 1 |
 | `SPI_HARDWARE_DEBUG_ENABLE` | 调试模式 (UART 输出) | 1 | 0 |
 | `SPI_PRODUCTION_ENABLE` | 生产模式 (无输出) | 0 | 1 |
-| `VEHICLE_WATCHDOG_ENABLE` | 看门狗超时保护 | 0 | 1 |
+| `VEHICLE_WATCHDOG_ENABLE` | 看门狗超时保护 | 0 | 1 |  
 
 ### B. Pi 端命令参考
 

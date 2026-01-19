@@ -120,6 +120,10 @@ class InteractiveTest:
                 self.stop_loop()
             elif cmd == 'stats':
                 self.cmd_stats()
+            elif cmd == 'reset' or cmd == 'r':
+                self.cmd_reset()
+            elif cmd == 'resume':
+                self.cmd_resume()
             elif cmd == 'frame':
                 self.cmd_frame(args)
             else:
@@ -141,6 +145,9 @@ Vehicle Control:
                                    Example: control 15.0 30.0
 
   stop                           - Emergency stop (steering=0, throttle=0)
+
+  reset                          - Reset from EMERGENCY to IDLE (Alias: r)
+  resume                         - Full recovery: EMERGENCY -> IDLE -> REMOTE
 
   mode <mode>                    - Set vehicle mode
                                    Alias: m
@@ -342,6 +349,30 @@ Notes:
         if stats['tx_count'] > 0:
             error_rate = (stats['crc_errors'] + stats['frame_errors']) / stats['tx_count'] * 100
             print(f"  Error Rate:   {error_rate:.2f}%")
+
+    def cmd_reset(self):
+        """Reset vehicle from EMERGENCY mode."""
+        print("[CMD] RESET (EMERGENCY -> IDLE)")
+        self.stop_loop()
+        result = self.spi.reset()
+        print_response(result)
+
+        if result.get('valid', False):
+            print("[OK] Reset successful! Use 'mode remote' to resume control.")
+
+    def cmd_resume(self):
+        """Reset and resume remote control."""
+        print("[CMD] RESUME (EMERGENCY -> IDLE -> REMOTE)")
+        self.stop_loop()
+        reset_result, resume_result = self.spi.reset_and_resume()
+
+        print("[Step 1] Reset to IDLE:")
+        print_response(reset_result)
+
+        if resume_result:
+            print("[Step 2] Switch to REMOTE:")
+            print_response(resume_result)
+            print("[OK] Vehicle ready for remote control!")
 
     def cmd_frame(self, args: list):
         """Build and display a raw frame."""
