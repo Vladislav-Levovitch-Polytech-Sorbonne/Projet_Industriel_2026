@@ -87,7 +87,7 @@ extern "C" {
                                      // Set to 0 for manual testing (slow  UART input)
 
 /* SPI Hardware Debug Mode (Real SPI + Vehicle + UART debug output) */
-#define SPI_HARDWARE_DEBUG_ENABLE 0  // 1=Enable, 0=Disable
+#define SPI_HARDWARE_DEBUG_ENABLE 1  // 1=Enable, 0=Disable
                                      // Runs real SPI communication with Raspberry Pi
                                      // Prints received commands to UART for debugging
 

@@ -583,7 +583,21 @@ class CoVAPSySPI:
         Returns:
             Parsed response dictionary
         """
-        return self.set_mode(MODE_IDLE)
+        # Send SET_MODE IDLE command
+        payload = bytes([MODE_IDLE])
+        tx_frame = self.build_frame(CMD_SET_MODE, payload)
+
+        # Step 1: Send command (ignore response - it's for previous cmd)
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait longer for STM32 to process recovery (UART output takes time)
+        time.sleep(0.15)  # 150ms delay (recovery has extra UART output)
+
+        # Step 3: Send HEARTBEAT to fetch response
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_frame = self._transfer_raw(heartbeat_frame)
+
+        return self.parse_response(rx_frame)
 
     def reset_and_resume(self) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
         """
@@ -598,7 +612,7 @@ class CoVAPSySPI:
         if not reset_result.get('valid', False):
             return reset_result, None
 
-        time.sleep(0.05)  # 50ms delay
+        time.sleep(0.1)  # 100ms delay before switching to REMOTE
         resume_result = self.set_mode(MODE_REMOTE)
 
         return reset_result, resume_result
