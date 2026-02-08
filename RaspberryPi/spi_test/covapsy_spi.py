@@ -540,7 +540,17 @@ class CoVAPSySPI:
 
         payload = bytes([mode])
         tx_frame = self.build_frame(CMD_SET_MODE, payload)
-        rx_frame = self._transfer(tx_frame)
+
+        # Step 1: Send command
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait for STM32 to process (mode changes have UART output)
+        time.sleep(0.1)  # 100ms delay
+
+        # Step 3: Send HEARTBEAT to fetch response
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_frame = self._transfer_raw(heartbeat_frame)
+
         return self.parse_response(rx_frame)
 
     def emergency_stop(self) -> Dict[str, Any]:
@@ -556,7 +566,17 @@ class CoVAPSySPI:
             Parsed response dictionary
         """
         tx_frame = self.build_frame(CMD_EMERGENCY_STOP)
-        rx_frame = self._transfer(tx_frame)
+
+        # Step 1: Send command
+        _ = self._transfer_raw(tx_frame)
+
+        # Step 2: Wait for STM32 to process (emergency stop has UART output)
+        time.sleep(0.1)  # 100ms delay
+
+        # Step 3: Send HEARTBEAT to fetch response
+        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+        rx_frame = self._transfer_raw(heartbeat_frame)
+
         return self.parse_response(rx_frame)
 
     def heartbeat(self) -> Dict[str, Any]:
@@ -572,6 +592,36 @@ class CoVAPSySPI:
         tx_frame = self.build_frame(CMD_HEARTBEAT)
         rx_frame = self._transfer(tx_frame)
         return self.parse_response(rx_frame)
+
+    def reset(self) -> Dict[str, Any]:
+        """
+        Reset vehicle from EMERGENCY mode to IDLE mode.
+        Clears safety_stop_triggered flag on STM32 side.
+
+        Recovery sequence: EMERGENCY -> reset() -> IDLE -> set_mode(REMOTE) -> REMOTE
+
+        Returns:
+            Parsed response dictionary
+        """
+        return self.set_mode(MODE_IDLE)
+
+    def reset_and_resume(self) -> Tuple[Dict[str, Any], Optional[Dict[str, Any]]]:
+        """
+        Full recovery: EMERGENCY -> IDLE -> REMOTE in one call.
+
+        Returns:
+            Tuple of (reset_result, resume_result)
+            resume_result is None if reset failed
+        """
+        reset_result = self.reset()
+
+        if not reset_result.get('valid', False):
+            return reset_result, None
+
+        time.sleep(0.1)  # 100ms delay before switching to REMOTE
+        resume_result = self.set_mode(MODE_REMOTE)
+
+        return reset_result, resume_result
 
     def get_statistics(self) -> Dict[str, int]:
         """

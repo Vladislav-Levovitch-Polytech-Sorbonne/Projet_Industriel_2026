@@ -84,7 +84,7 @@ extern "C" {
 #define VEHICLE_WATCHDOG_ENABLE 0    // 1=Enable, 0=Disable
                                      // When enabled, triggers EMERGENCY_STOP if no command
                                      // received for >500ms in REMOTE mode
-                                     // Set to 0 for manual testing (slow UART input)
+                                     // Set to 0 for manual testing (slow  UART input)
 
 /* SPI Hardware Debug Mode (Real SPI + Vehicle + UART debug output) */
 #define SPI_HARDWARE_DEBUG_ENABLE 1  // 1=Enable, 0=Disable
