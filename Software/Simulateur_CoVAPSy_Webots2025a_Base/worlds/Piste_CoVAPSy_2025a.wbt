@@ -6,6 +6,7 @@ EXTERNPROTO "../protos/TT02_2023b.proto"
 EXTERNPROTO "../protos/TT02_2023b_Camera.proto"
 
 WorldInfo {
+  basicTimeStep 50
 }
 Viewpoint {
   orientation -0.15612198054631546 0.9765966041367921 -0.1479357968132854 1.0925600380817375
@@ -2249,6 +2250,5 @@ TT02_2023b_Camera {
   translation -1 -2 0.04
   name "TT02_Antigravity"
   controller "controller_camera_lidar"
-  color 0 1 1
+  lidarNoise_OverMaxRange 0.00833
 }
-

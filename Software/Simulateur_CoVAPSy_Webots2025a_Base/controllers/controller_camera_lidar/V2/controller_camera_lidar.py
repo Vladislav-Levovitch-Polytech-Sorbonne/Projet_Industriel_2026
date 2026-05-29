@@ -135,7 +135,7 @@ def set_direction_degre(angle_degre):
 
 def recule():
     """倒车（3 km/h）"""
-    driver.setCruisingSpeed(-2)
+    driver.setCruisingSpeed(-3)
 
 
 # --- 纯 Lidar 控制器类 ---
@@ -331,7 +331,7 @@ class SubsumptionController:
             actual_speed_kmh = abs(self.driver.getCurrentSpeed())
 
             # 条件A：前方太近（轮子打滑顶墙）
-            too_close = (front_dist > 0 and front_dist < 300)
+            too_close = (front_dist > 0 and front_dist < 200)
 
             # 条件B：速度持续为零（真正卡住）
             if actual_speed_kmh < 1.0:
@@ -377,12 +377,6 @@ class SubsumptionController:
             speed = 0.8
         else:
             speed = 0.8 if abs(steer) > 20 else 1.5
-
-        # 前方距离比例降速（F < 600mm 时线性减速，最低 0.3 m/s）
-        front_dist = lidar_mm[0]
-        if front_dist > 0 and front_dist < 600:
-            speed_factor = front_dist / 600.0
-            speed = max(0.3, speed * speed_factor)
 
         return steer, speed, f'lidar_{mode}'
 
