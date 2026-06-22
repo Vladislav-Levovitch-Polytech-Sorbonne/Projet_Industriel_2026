@@ -24,6 +24,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "FreeRTOS.h"
+#include "semphr.h"
+#include "cmsis_os.h"
+extern osSemaphoreId_t SPIDataSemaphoreHandle;
 
 /* Global variables ----------------------------------------------------------*/
 /* Global SPI communication state pointer
@@ -31,6 +35,7 @@
  * - Declared extern in spi_comm.h for access from vehicle_control.c
  */
 SPI_Comm_State *g_spi_comm_ptr = NULL;
+
 
 /* Private function prototypes -----------------------------------------------*/
 
@@ -70,6 +75,14 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
         // Frame is valid - set flag for control loop to process
         comm->buffer_swap_flag = 1;
         comm->frame_received_count++;
+
+
+		  // 通知 ControlTask 有新数据（从中断安全释放信号量）
+		  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+		  xSemaphoreGiveFromISR((SemaphoreHandle_t)SPIDataSemaphoreHandle,
+								&xHigherPriorityTaskWoken);
+		  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  // 必要时立即切换到高优先级任务
+
 
         // Process the command and prepare response for NEXT transfer
         // Note: This response will be sent when master sends the next command

@@ -92,7 +92,7 @@ extern "C" {
                                      // Prints received commands to UART for debugging
 
 /* SPI Production Mode (Real SPI + Vehicle, NO debug output) */
-#define SPI_PRODUCTION_ENABLE     1  // 1=Enable, 0=Disable
+#define SPI_PRODUCTION_ENABLE     0  // 1=Enable, 0=Disable
                                      // Same as DEBUG mode but without UART output
                                      // Use this for final deployment
 

@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -31,6 +32,7 @@
 #include "esc.h"
 #include "vehicle_state.h"
 #include "spi_comm.h"
+#include "cmsis_os.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,8 +65,36 @@ TIM_HandleTypeDef htim1;
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
+/* Definitions for defaultTask */
+osThreadId_t defaultTaskHandle;
+const osThreadAttr_t defaultTask_attributes = {
+  .name = "defaultTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for ControlTask */
+osThreadId_t ControlTaskHandle;
+const osThreadAttr_t ControlTask_attributes = {
+  .name = "ControlTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh3,
+};
+/* Definitions for DebugTask */
+osThreadId_t DebugTaskHandle;
+const osThreadAttr_t DebugTask_attributes = {
+  .name = "DebugTask",
+  .stack_size = 256 * 4,
+  .priority = (osPriority_t) osPriorityLow1,
+};
+/* Definitions for SPIDataSemaphore */
+osSemaphoreId_t SPIDataSemaphoreHandle;
+const osSemaphoreAttr_t SPIDataSemaphore_attributes = {
+  .name = "SPIDataSemaphore"
+};
 /* USER CODE BEGIN PV */
-
+Vehicle_State g_vehicle;
+SPI_Comm_State g_spi_comm;
+static uint16_t g_sharp_dma_buf[2];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,6 +107,10 @@ static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI3_Init(void);
+void StartDefaultTask(void *argument);
+void StartControlTask(void *argument);
+void StartDebugTask(void *argument);
+
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -175,7 +209,80 @@ int main(void)
   // Use this for final deployment with Raspberry Pi
   SPI_Production(&hspi3, &htim1, &hi2c1, &hadc1);
 #endif
+
+  // === FreeRTOS 模式初始化 ===
+  // 1. 绑定硬件句柄
+  g_vehicle.htim_servo_esc      = &htim1;
+  g_vehicle.hi2c_imu            = &hi2c1;
+  g_vehicle.hadc_sharp          = &hadc1;
+  g_vehicle.huart_debug         = &huart2;
+  g_vehicle.sharp_dma_buffer      = g_sharp_dma_buf;
+  g_vehicle.sharp_dma_buffer_size = 2;
+
+  // 2. 初始化车辆（舵机、电调、BNO055、SHARP）
+  Vehicle_Init(&g_vehicle);
+
+  // 3. 绑定 SPI 通信句柄
+  g_spi_comm.hspi        = &hspi3;
+  g_spi_comm.huart_debug = &huart2;
+  g_spi_comm.vehicle     = &g_vehicle;
+
+  // 4. 初始化 SPI 通信模块
+  SPI_Comm_Init(&g_spi_comm);
+
+  // 5. 电调解锁（发送 2 秒中性脉冲，必须在调度器启动前完成）
+  ESC_Arm(&htim1, &g_vehicle.esc_data, &huart2);
+
+  // 6. 设置为远程控制模式
+  Vehicle_SetMode(&g_vehicle, VEHICLE_MODE_REMOTE);
+
   /* USER CODE END 2 */
+
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of SPIDataSemaphore */
+  SPIDataSemaphoreHandle = osSemaphoreNew(1, 0, &SPIDataSemaphore_attributes);
+
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of defaultTask */
+  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of ControlTask */
+  ControlTaskHandle = osThreadNew(StartControlTask, NULL, &ControlTask_attributes);
+
+  /* creation of DebugTask */
+  DebugTaskHandle = osThreadNew(StartDebugTask, NULL, &DebugTask_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -548,13 +655,13 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
   /* DMA2_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel1_IRQn);
   /* DMA2_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Channel2_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA2_Channel2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel2_IRQn);
 
 }
@@ -580,7 +687,115 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
+{
+    char msg[64];
+    snprintf(msg, sizeof(msg), "[FATAL] Stack overflow: %s\r\n", pcTaskName);
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 100);
+    while(1);
+}
+
+void vApplicationMallocFailedHook(void)
+{
+    char msg[] = "[FATAL] FreeRTOS malloc failed!\r\n";
+    HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), 100);
+    while(1);
+}
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_StartDefaultTask */
+/**
+  * @brief  Function implementing the defaultTask thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_StartDefaultTask */
+void StartDefaultTask(void *argument)
+{
+  /* USER CODE BEGIN 5 */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartControlTask */
+/**
+* @brief Function implementing the ControlTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartControlTask */
+void StartControlTask(void *argument)
+{
+  /* USER CODE BEGIN StartControlTask */
+	uint32_t tick = osKernelGetTickCount();
+
+	    for(;;)
+	    {
+	      tick += 20;  // 先算好下一次唤醒的绝对时刻
+
+	      // 1. 更新传感器数据
+	      Vehicle_UpdateSensors(&g_vehicle);
+
+	      // 2. 非阻塞尝试获取信号量（timeout=0：不等待，立即返回）
+	      //    中断释放了信号量 → 获取成功 → 处理新 SPI 数据
+	      //    没有新数据      → 获取失败 → 跳过，继续控制循环
+	      if (osSemaphoreAcquire(SPIDataSemaphoreHandle, 0) == osOK)
+	      {
+	        SPI_Comm_UpdateVehicleControl(&g_spi_comm, &g_vehicle);
+	      }
+
+	      // 3. 执行控制循环
+	      Vehicle_ControlLoop(&g_vehicle);
+
+	      // 4. 等待到绝对时刻 tick（自动补偿执行时间）
+	      osDelayUntil(tick);
+	    }
+  /* USER CODE END StartControlTask */
+}
+
+/* USER CODE BEGIN Header_StartDebugTask */
+/**
+* @brief Function implementing the DebugTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartDebugTask */
+void StartDebugTask(void *argument)
+{
+  /* USER CODE BEGIN StartDebugTask */
+  /* Infinite loop */
+	for(;;)
+	    {
+	      Vehicle_PrintStatus(&g_vehicle);
+	      osDelay(1000);
+	    }
+  /* USER CODE END StartDebugTask */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM6 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM6) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
