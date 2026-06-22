@@ -1,0 +1,20 @@
+# STM32CubeIDE 生成的编译垃圾
+Debug/
+Release/
+build/
+*.elf
+*.bin
+*.hex
+*.map
+*.o
+*.d
+*.su
+
+# 也是 IDE 的临时配置，视情况可忽略，但建议保留 .project 和 .cproject
+.settings/
+*.launch
+
+# 系统生成的文件
+.DS_Store
+Thumbs.db
+nul
