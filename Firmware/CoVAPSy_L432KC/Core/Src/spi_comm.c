@@ -17,6 +17,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "spi_comm.h"
+#include "main.h"
 
 #if SPI_COMM_ENABLE
 
@@ -25,9 +26,10 @@
 #include <stdlib.h>
 #include <math.h>
 #include "FreeRTOS.h"
-#include "semphr.h"
+#include "task.h"
 #include "cmsis_os.h"
-extern osSemaphoreId_t SPIDataSemaphoreHandle;
+
+extern osThreadId_t SPICommTaskHandle;
 
 /* Global variables ----------------------------------------------------------*/
 /* Global SPI communication state pointer
@@ -38,6 +40,15 @@ SPI_Comm_State *g_spi_comm_ptr = NULL;
 
 
 /* Private function prototypes -----------------------------------------------*/
+static void SPI_Comm_SetReady(GPIO_PinState state);
+static void SPI_Comm_NotifyTaskFromISR(void);
+static HAL_StatusTypeDef SPI_Comm_ArmDMA(SPI_Comm_State *comm);
+static HAL_StatusTypeDef SPI_Comm_Recover(SPI_Comm_State *comm,
+                                          uint8_t error_code);
+static uint8_t SPI_Comm_ValidateFrameDetailed(const SPI_Frame *frame);
+static uint8_t SPI_Comm_QueueVehicleCommand(
+    SPI_Comm_State *comm,
+    const SPI_PendingVehicleCommand *command);
 
 /* ============================================ */
 /* SPI DMA Callback Functions (for hardware mode) */
@@ -63,47 +74,37 @@ SPI_Comm_State *g_spi_comm_ptr = NULL;
  */
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-    // Check if this is SPI3 (our communication interface)
     if (hspi->Instance != SPI3 || g_spi_comm_ptr == NULL) {
         return;
     }
 
     SPI_Comm_State *comm = g_spi_comm_ptr;
 
-    // Validate the received frame
-    if (SPI_Comm_ValidateFrame(&comm->rx_buffer_primary)) {
-        // Frame is valid - set flag for control loop to process
-        comm->buffer_swap_flag = 1;
-        comm->frame_received_count++;
+    SPI_Comm_SetReady(GPIO_PIN_RESET);
+    comm->dma_complete = 1U;
+    comm->run_state = SPI_COMM_STATE_PROCESSING;
+    SPI_Comm_NotifyTaskFromISR();
+}
 
-
-		  // 通知 ControlTask 有新数据（从中断安全释放信号量）
-		  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-		  xSemaphoreGiveFromISR((SemaphoreHandle_t)SPIDataSemaphoreHandle,
-								&xHigherPriorityTaskWoken);
-		  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);  // 必要时立即切换到高优先级任务
-
-
-        // Process the command and prepare response for NEXT transfer
-        // Note: This response will be sent when master sends the next command
-        SPI_Comm_ProcessFrame(comm, &comm->rx_buffer_primary, &comm->tx_buffer);
-    } else {
-        // Frame validation failed
-        comm->frame_error_count++;
-
-        // Prepare error response for next transfer
-        Payload_AckError error_payload;
-        error_payload.error_code = SPI_ERROR_CRC;
-        SPI_Comm_BuildResponse(&comm->tx_buffer, SPI_RESP_ACK_ERROR,
-                              &error_payload, sizeof(error_payload));
+void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
+{
+    if (hspi->Instance != SPI3 || g_spi_comm_ptr == NULL) {
+        return;
     }
 
-    // Restart full-duplex DMA for next transfer
-    // This is critical: without this, communication stops!
-    HAL_SPI_TransmitReceive_DMA(hspi,
-                                (uint8_t*)&comm->tx_buffer,
-                                (uint8_t*)&comm->rx_buffer_primary,
-                                sizeof(SPI_Frame));
+    SPI_Comm_SetReady(GPIO_PIN_RESET);
+    g_spi_comm_ptr->spi_error = 1U;
+    g_spi_comm_ptr->dma_error_count++;
+    g_spi_comm_ptr->run_state = SPI_COMM_STATE_ERROR;
+    SPI_Comm_NotifyTaskFromISR();
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == SPI_NSS_Pin) {
+        SPI_Comm_HandleNssEdge(
+            HAL_GPIO_ReadPin(SPI_NSS_GPIO_Port, SPI_NSS_Pin) == GPIO_PIN_SET);
+    }
 }
 
 #endif /* SPI_COMM_USE_HARDWARE */
@@ -126,13 +127,34 @@ HAL_StatusTypeDef SPI_Comm_Init(SPI_Comm_State *comm)
     memset(&comm->rx_buffer_primary, 0, sizeof(SPI_Frame));
     memset(&comm->rx_buffer_secondary, 0, sizeof(SPI_Frame));
     memset(&comm->tx_buffer, 0, sizeof(SPI_Frame));
+    memset(&comm->cached_response, 0, sizeof(SPI_Frame));
+    memset(comm->response_cache, 0, sizeof(comm->response_cache));
+    memset(comm->response_sequence, 0, sizeof(comm->response_sequence));
+    memset(comm->response_valid, 0, sizeof(comm->response_valid));
+    memset(&comm->telemetry, 0, sizeof(comm->telemetry));
+    memset(comm->pending_queue, 0, sizeof(comm->pending_queue));
 
     // Initialize flags and counters
     comm->buffer_swap_flag = 0;
+    comm->dma_complete = 0U;
+    comm->nss_high = 1U;
+    comm->short_frame = 0U;
+    comm->spi_error = 0U;
+    comm->run_state = SPI_COMM_STATE_STOPPED;
+    comm->last_sequence = 0U;
+    comm->last_sequence_valid = 0U;
+    comm->response_cache_next = 0U;
     comm->frame_received_count = 0;
     comm->crc_error_count = 0;
     comm->frame_error_count = 0;
     comm->valid_command_count = 0;
+    comm->duplicate_count = 0U;
+    comm->short_frame_count = 0U;
+    comm->dma_error_count = 0U;
+    comm->dma_restart_error_count = 0U;
+    comm->pending_head = 0U;
+    comm->pending_tail = 0U;
+    comm->pending_count = 0U;
 
     // Initialize control data cache
     comm->target_steering_deg = 0.0f;
@@ -150,26 +172,94 @@ HAL_StatusTypeDef SPI_Comm_Init(SPI_Comm_State *comm)
     // Save global pointer for callback access
     g_spi_comm_ptr = comm;
 
-#if SPI_COMM_USE_HARDWARE
-    // Start SPI full-duplex DMA transfer (real hardware mode)
-    if (comm->hspi != NULL) {
-        // Prepare initial TX buffer with "IDLE" status response
-        // This will be sent during the first command reception
-        SPI_Comm_BuildResponse(&comm->tx_buffer, SPI_RESP_ACK_OK, NULL, 0);
-
-        // Start full-duplex DMA transfer
-        // TX: Send prepared response (initially ACK_OK)
-        // RX: Receive incoming command from master
-        if (HAL_SPI_TransmitReceive_DMA(comm->hspi,
-                                        (uint8_t*)&comm->tx_buffer,
-                                        (uint8_t*)&comm->rx_buffer_primary,
-                                        sizeof(SPI_Frame)) != HAL_OK) {
-            return HAL_ERROR;
-        }
-    }
-#endif
+    /* DMA is intentionally started only after the RTOS task exists. */
+    SPI_Comm_BuildResponse(&comm->tx_buffer, SPI_RESP_ACK_OK,
+                           SPI_SEQUENCE_BOOT, NULL, 0);
+    memcpy(&comm->cached_response, &comm->tx_buffer, sizeof(SPI_Frame));
+    SPI_Comm_SetReady(GPIO_PIN_RESET);
 
     return HAL_OK;
+}
+
+HAL_StatusTypeDef SPI_Comm_Start(SPI_Comm_State *comm)
+{
+#if SPI_COMM_USE_HARDWARE
+    return SPI_Comm_ArmDMA(comm);
+#else
+    (void)comm;
+    return HAL_OK;
+#endif
+}
+
+static void SPI_Comm_SetReady(GPIO_PinState state)
+{
+    HAL_GPIO_WritePin(SPI_READY_GPIO_Port, SPI_READY_Pin, state);
+}
+
+static void SPI_Comm_NotifyTaskFromISR(void)
+{
+    if (SPICommTaskHandle == NULL) {
+        return;
+    }
+
+    BaseType_t task_woken = pdFALSE;
+    vTaskNotifyGiveFromISR((TaskHandle_t)SPICommTaskHandle, &task_woken);
+    portYIELD_FROM_ISR(task_woken);
+}
+
+static HAL_StatusTypeDef SPI_Comm_ArmDMA(SPI_Comm_State *comm)
+{
+    if (comm == NULL || comm->hspi == NULL) {
+        return HAL_ERROR;
+    }
+
+    memset(&comm->rx_buffer_primary, 0, sizeof(SPI_Frame));
+    comm->dma_complete = 0U;
+    comm->short_frame = 0U;
+    comm->spi_error = 0U;
+    comm->nss_high = 1U;
+
+    HAL_StatusTypeDef status = HAL_SPI_TransmitReceive_DMA(
+        comm->hspi,
+        (uint8_t *)&comm->tx_buffer,
+        (uint8_t *)&comm->rx_buffer_primary,
+        sizeof(SPI_Frame));
+
+    if (status != HAL_OK) {
+        comm->dma_restart_error_count++;
+        comm->run_state = SPI_COMM_STATE_ERROR;
+        SPI_Comm_SetReady(GPIO_PIN_RESET);
+        return status;
+    }
+
+    comm->run_state = SPI_COMM_STATE_ARMED;
+    SPI_Comm_SetReady(GPIO_PIN_SET);
+    return HAL_OK;
+}
+
+void SPI_Comm_HandleNssEdge(uint8_t nss_is_high)
+{
+    SPI_Comm_State *comm = g_spi_comm_ptr;
+    if (comm == NULL) {
+        return;
+    }
+
+    if (!nss_is_high) {
+        comm->nss_high = 0U;
+        if (comm->run_state == SPI_COMM_STATE_ARMED) {
+            comm->run_state = SPI_COMM_STATE_TRANSFER;
+        }
+        SPI_Comm_SetReady(GPIO_PIN_RESET);
+        return;
+    }
+
+    comm->nss_high = 1U;
+    if (!comm->dma_complete && comm->run_state == SPI_COMM_STATE_TRANSFER &&
+        comm->hspi != NULL && comm->hspi->hdmarx != NULL &&
+        __HAL_DMA_GET_COUNTER(comm->hspi->hdmarx) != 0U) {
+        comm->short_frame = 1U;
+    }
+    SPI_Comm_NotifyTaskFromISR();
 }
 
 /**
@@ -198,40 +288,31 @@ uint16_t SPI_Comm_CalculateCRC16(const uint8_t *data, uint16_t length)
  */
 uint8_t SPI_Comm_ValidateFrame(const SPI_Frame *frame)
 {
-    // Input validation
+    return SPI_Comm_ValidateFrameDetailed(frame) == SPI_ERROR_NONE;
+}
+
+static uint8_t SPI_Comm_ValidateFrameDetailed(const SPI_Frame *frame)
+{
     if (frame == NULL) {
-        return 0;
+        return SPI_ERROR_INTERNAL;
     }
-
-    // Layer 1: Header check
     if (frame->header != SPI_FRAME_HEADER) {
-        return 0;  // Invalid header
+        return SPI_ERROR_HEADER;
     }
-
-    // Layer 2: Footer check
     if (frame->footer != SPI_FRAME_FOOTER) {
-        return 0;  // Invalid footer
+        return SPI_ERROR_FOOTER;
     }
-
-    // Layer 3: Payload length check
+    if ((frame->version_flags >> 4) != SPI_PROTOCOL_VERSION) {
+        return SPI_ERROR_VERSION;
+    }
     if (frame->length > SPI_PAYLOAD_MAX_SIZE) {
-        return 0;  // Invalid length
+        return SPI_ERROR_LENGTH;
     }
 
-    // Layer 4: CRC check
-    // Calculate CRC over: Header + Command + Length + Payload (fixed 29 bytes)
-    // Note: CRC always covers full 29 bytes regardless of Length field
-    // This protects against Length field corruption and covers Padding area
-    uint16_t calculated_crc = SPI_Comm_CalculateCRC16((const uint8_t*)frame, 29);
-
-    // Extract CRC from frame (Big-Endian)
+    uint16_t calculated_crc = SPI_Comm_CalculateCRC16(
+        (const uint8_t *)frame, 29U);
     uint16_t frame_crc = Uint16_FromBigEndian(frame->crc16);
-
-    if (calculated_crc != frame_crc) {
-        return 0;  // CRC mismatch
-    }
-
-    return 1;  // Valid frame
+    return calculated_crc == frame_crc ? SPI_ERROR_NONE : SPI_ERROR_CRC;
 }
 
 /**
@@ -239,6 +320,7 @@ uint8_t SPI_Comm_ValidateFrame(const SPI_Frame *frame)
  */
 HAL_StatusTypeDef SPI_Comm_BuildResponse(SPI_Frame *tx_frame,
                                          uint8_t response_code,
+                                         uint16_t sequence,
                                          const void *payload,
                                          uint8_t payload_length)
 {
@@ -252,6 +334,8 @@ HAL_StatusTypeDef SPI_Comm_BuildResponse(SPI_Frame *tx_frame,
 
     // Build frame structure
     tx_frame->header = SPI_FRAME_HEADER;
+    tx_frame->version_flags = SPI_VERSION_FLAGS;
+    Uint16_ToBigEndian(sequence, tx_frame->sequence);
     tx_frame->command = response_code;
     tx_frame->length = payload_length;
 
@@ -272,6 +356,99 @@ HAL_StatusTypeDef SPI_Comm_BuildResponse(SPI_Frame *tx_frame,
     tx_frame->footer = SPI_FRAME_FOOTER;
 
     return HAL_OK;
+}
+
+HAL_StatusTypeDef SPI_Comm_Service(SPI_Comm_State *comm)
+{
+    if (comm == NULL || comm->hspi == NULL) {
+        return HAL_ERROR;
+    }
+
+    if (comm->spi_error) {
+        return SPI_Comm_Recover(comm, SPI_ERROR_INTERNAL);
+    }
+
+    if (comm->short_frame) {
+        comm->short_frame_count++;
+        return SPI_Comm_Recover(comm, SPI_ERROR_SHORT_FRAME);
+    }
+
+    /* DMA completion may precede the NSS rising edge by a few microseconds. */
+    if (!comm->dma_complete || !comm->nss_high) {
+        return HAL_BUSY;
+    }
+
+    memcpy(&comm->rx_buffer_secondary,
+           &comm->rx_buffer_primary,
+           sizeof(SPI_Frame));
+    comm->dma_complete = 0U;
+
+    SPI_Frame *rx = &comm->rx_buffer_secondary;
+    uint16_t sequence = Uint16_FromBigEndian(rx->sequence);
+    uint8_t validation = SPI_Comm_ValidateFrameDetailed(rx);
+
+    if (validation != SPI_ERROR_NONE) {
+        Payload_AckError error_payload = { .error_code = validation };
+        comm->frame_error_count++;
+        if (validation == SPI_ERROR_CRC) {
+            comm->crc_error_count++;
+        }
+        SPI_Comm_BuildResponse(&comm->tx_buffer, SPI_RESP_ACK_ERROR,
+                               sequence, &error_payload,
+                               sizeof(error_payload));
+        return SPI_Comm_ArmDMA(comm);
+    }
+
+    comm->frame_received_count++;
+
+    for (uint8_t i = 0U; i < SPI_RESPONSE_CACHE_SIZE; i++) {
+        if (comm->response_valid[i] &&
+            comm->response_sequence[i] == sequence) {
+            memcpy(&comm->tx_buffer,
+                   &comm->response_cache[i],
+                   sizeof(SPI_Frame));
+            comm->duplicate_count++;
+            return SPI_Comm_ArmDMA(comm);
+        }
+    }
+
+    (void)SPI_Comm_ProcessFrame(comm, rx, &comm->tx_buffer);
+    comm->last_sequence = sequence;
+    comm->last_sequence_valid = 1U;
+    memcpy(&comm->cached_response, &comm->tx_buffer, sizeof(SPI_Frame));
+    uint8_t cache_index = comm->response_cache_next;
+    memcpy(&comm->response_cache[cache_index],
+           &comm->tx_buffer,
+           sizeof(SPI_Frame));
+    comm->response_sequence[cache_index] = sequence;
+    comm->response_valid[cache_index] = 1U;
+    comm->response_cache_next = (uint8_t)((cache_index + 1U) %
+                                          SPI_RESPONSE_CACHE_SIZE);
+
+    return SPI_Comm_ArmDMA(comm);
+}
+
+static HAL_StatusTypeDef SPI_Comm_Recover(SPI_Comm_State *comm,
+                                          uint8_t error_code)
+{
+    if (comm == NULL || comm->hspi == NULL) {
+        return HAL_ERROR;
+    }
+
+    SPI_Comm_SetReady(GPIO_PIN_RESET);
+    (void)HAL_SPI_Abort(comm->hspi);
+    __HAL_SPI_CLEAR_OVRFLAG(comm->hspi);
+
+    comm->dma_complete = 0U;
+    comm->short_frame = 0U;
+    comm->spi_error = 0U;
+    comm->run_state = SPI_COMM_STATE_STOPPED;
+
+    Payload_AckError error_payload = { .error_code = error_code };
+    SPI_Comm_BuildResponse(&comm->tx_buffer, SPI_RESP_ACK_ERROR,
+                           SPI_SEQUENCE_BOOT, &error_payload,
+                           sizeof(error_payload));
+    return SPI_Comm_ArmDMA(comm);
 }
 
 /**
@@ -320,6 +497,7 @@ HAL_StatusTypeDef SPI_Comm_ProcessFrame(SPI_Comm_State *comm,
                 Payload_AckError error_payload;
                 error_payload.error_code = SPI_ERROR_UNKNOWN_CMD;
                 SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                      Uint16_FromBigEndian(rx_frame->sequence),
                                       &error_payload, sizeof(error_payload));
             }
             status = HAL_ERROR;
@@ -341,41 +519,96 @@ HAL_StatusTypeDef SPI_Comm_ProcessFrame(SPI_Comm_State *comm,
 HAL_StatusTypeDef SPI_Comm_UpdateVehicleControl(SPI_Comm_State *comm,
                                                  Vehicle_State *vehicle)
 {
-    // Input validation
     if (comm == NULL || vehicle == NULL) {
         return HAL_ERROR;
     }
 
-    // Check if new data is available from SPI
-    if (comm->buffer_swap_flag) {
-        // Atomic operation: Copy primary buffer to secondary buffer
-        __disable_irq();
-        memcpy(&comm->rx_buffer_secondary, &comm->rx_buffer_primary,
-               sizeof(SPI_Frame));
-        comm->buffer_swap_flag = 0;
-        __enable_irq();
+    for (;;) {
+        SPI_PendingVehicleCommand pending;
 
-        // Validate and process frame
-        if (SPI_Comm_ValidateFrame(&comm->rx_buffer_secondary)) {
-            comm->frame_received_count++;
-            SPI_Comm_ProcessFrame(comm, &comm->rx_buffer_secondary, NULL);
+        taskENTER_CRITICAL();
+        if (comm->pending_count == 0U) {
+            taskEXIT_CRITICAL();
+            break;
+        }
+        pending = comm->pending_queue[comm->pending_tail];
+        comm->pending_tail = (uint8_t)((comm->pending_tail + 1U) %
+                                       SPI_PENDING_QUEUE_SIZE);
+        comm->pending_count--;
+        taskEXIT_CRITICAL();
 
-            // ONLY apply control values when new VALID data arrives
-            // This is important for watchdog: SetTarget functions update last_command_timestamp
-            // If we call them every cycle, watchdog would never trigger!
-            Vehicle_SetTargetSteering(vehicle, comm->target_steering_deg);
-            Vehicle_SetTargetThrottle(vehicle, comm->target_throttle_percent);
-        } else {
-            // Frame validation failed - don't update controls, watchdog will timeout
-            comm->frame_error_count++;
+        switch (pending.command) {
+            case SPI_CMD_SET_CONTROL:
+                (void)Vehicle_SetTargetSteering(vehicle,
+                                                pending.steering_deg);
+                (void)Vehicle_SetTargetThrottle(vehicle,
+                                                pending.throttle_percent);
+                break;
+            case SPI_CMD_SET_MODE:
+                (void)Vehicle_SetMode(vehicle, pending.mode);
+                break;
+            case SPI_CMD_EMERGENCY_STOP:
+                (void)Vehicle_EmergencyStop(vehicle);
+                break;
+            default:
+                break;
         }
     }
 
-    // Note: We do NOT apply control values when no new data arrives.
-    // The vehicle will continue using the last target values, but
-    // last_command_timestamp will NOT be updated, allowing watchdog timeout.
-
     return HAL_OK;
+}
+
+static uint8_t SPI_Comm_QueueVehicleCommand(
+    SPI_Comm_State *comm,
+    const SPI_PendingVehicleCommand *command)
+{
+    if (comm == NULL || command == NULL) {
+        return 0U;
+    }
+
+    taskENTER_CRITICAL();
+
+    /* Emergency stop must never be rejected because normal commands queued. */
+    if (command->command == SPI_CMD_EMERGENCY_STOP) {
+        comm->pending_head = 0U;
+        comm->pending_tail = 0U;
+        comm->pending_count = 0U;
+    } else if (comm->pending_count >= SPI_PENDING_QUEUE_SIZE) {
+        taskEXIT_CRITICAL();
+        return 0U;
+    }
+
+    comm->pending_queue[comm->pending_head] = *command;
+    comm->pending_head = (uint8_t)((comm->pending_head + 1U) %
+                                   SPI_PENDING_QUEUE_SIZE);
+    comm->pending_count++;
+    taskEXIT_CRITICAL();
+    return 1U;
+}
+
+void SPI_Comm_PublishTelemetry(SPI_Comm_State *comm,
+                               const Vehicle_State *vehicle)
+{
+    if (comm == NULL || vehicle == NULL) {
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    comm->telemetry.mode = vehicle->mode;
+    comm->telemetry.current_steering_deg = vehicle->current_steering_deg;
+    comm->telemetry.current_throttle_percent = vehicle->current_throttle_percent;
+    comm->telemetry.is_reversing = vehicle->is_reversing;
+    comm->telemetry.safety_stop_triggered = vehicle->safety_stop_triggered;
+    comm->telemetry.control_loop_counter = vehicle->control_loop_counter;
+    comm->telemetry.sharp_left_distance_cm = vehicle->sharp_left_distance_cm;
+    comm->telemetry.sharp_right_distance_cm = vehicle->sharp_right_distance_cm;
+    comm->telemetry.sharp_left_valid = vehicle->sharp_left_valid;
+    comm->telemetry.sharp_right_valid = vehicle->sharp_right_valid;
+    comm->telemetry.roll_deg = vehicle->roll_deg;
+    comm->telemetry.pitch_deg = vehicle->pitch_deg;
+    comm->telemetry.yaw_deg = vehicle->yaw_deg;
+    comm->telemetry.imu_valid = vehicle->imu_valid;
+    taskEXIT_CRITICAL();
 }
 
 /**
@@ -400,13 +633,17 @@ void SPI_Comm_PrintStats(const SPI_Comm_State *comm)
         return;
     }
 
-    char buffer[200];
+    char buffer[240];
     snprintf(buffer, sizeof(buffer),
-             "[SPI_Comm] Stats: RX=%lu Valid=%lu CRC_Err=%lu Frame_Err=%lu\r\n",
+             "[SPI] RX=%lu Valid=%lu Dup=%lu CRC=%lu Frame=%lu Short=%lu DMA=%lu Restart=%lu\r\n",
              comm->frame_received_count,
              comm->valid_command_count,
+             comm->duplicate_count,
              comm->crc_error_count,
-             comm->frame_error_count);
+             comm->frame_error_count,
+             comm->short_frame_count,
+             comm->dma_error_count,
+             comm->dma_restart_error_count);
 
     HAL_UART_Transmit(comm->huart_debug, (uint8_t*)buffer, strlen(buffer), 100);
 }
@@ -422,7 +659,7 @@ HAL_StatusTypeDef HandleCmd_GetStatus(SPI_Comm_State *comm,
                                       const SPI_Frame *rx_frame,
                                       SPI_Frame *tx_frame)
 {
-    if (comm == NULL) {
+    if (comm == NULL || rx_frame == NULL) {
         return HAL_ERROR;
     }
 
@@ -434,40 +671,25 @@ HAL_StatusTypeDef HandleCmd_GetStatus(SPI_Comm_State *comm,
     uint8_t payload[20];  // Enough for Payload_GetStatus
     uint8_t payload_len = 0;
 
-    if (comm->vehicle != NULL) {
-        // Real vehicle data available
-        payload[payload_len++] = (uint8_t)comm->vehicle->mode;
+    SPI_TelemetrySnapshot snapshot;
+    taskENTER_CRITICAL();
+    snapshot = comm->telemetry;
+    taskEXIT_CRITICAL();
 
-        Float_ToBigEndian(comm->vehicle->current_steering_deg, &payload[payload_len]);
-        payload_len += 4;
-
-        Float_ToBigEndian(comm->vehicle->current_throttle_percent, &payload[payload_len]);
-        payload_len += 4;
-
-        payload[payload_len++] = comm->vehicle->is_reversing ? 1 : 0;
-        payload[payload_len++] = comm->vehicle->safety_stop_triggered ? 1 : 0;
-
-        Uint32_ToBigEndian(comm->vehicle->control_loop_counter, &payload[payload_len]);
-        payload_len += 4;
-    } else {
-        // Test mode - return cached/dummy data
-        payload[payload_len++] = (uint8_t)comm->target_mode;
-
-        Float_ToBigEndian(comm->target_steering_deg, &payload[payload_len]);
-        payload_len += 4;
-
-        Float_ToBigEndian(comm->target_throttle_percent, &payload[payload_len]);
-        payload_len += 4;
-
-        payload[payload_len++] = 0;  // is_reversing
-        payload[payload_len++] = 0;  // safety_stop_triggered
-
-        Uint32_ToBigEndian(comm->valid_command_count, &payload[payload_len]);
-        payload_len += 4;
-    }
+    payload[payload_len++] = (uint8_t)snapshot.mode;
+    Float_ToBigEndian(snapshot.current_steering_deg, &payload[payload_len]);
+    payload_len += 4;
+    Float_ToBigEndian(snapshot.current_throttle_percent, &payload[payload_len]);
+    payload_len += 4;
+    payload[payload_len++] = snapshot.is_reversing ? 1U : 0U;
+    payload[payload_len++] = snapshot.safety_stop_triggered ? 1U : 0U;
+    Uint32_ToBigEndian(snapshot.control_loop_counter, &payload[payload_len]);
+    payload_len += 4;
 
     // Build response frame
-    SPI_Comm_BuildResponse(tx_frame, SPI_RESP_DATA, payload, payload_len);
+    SPI_Comm_BuildResponse(tx_frame, SPI_RESP_DATA,
+                           Uint16_FromBigEndian(rx_frame->sequence),
+                           payload, payload_len);
 
     return HAL_OK;
 }
@@ -490,6 +712,7 @@ HAL_StatusTypeDef HandleCmd_SetControl(SPI_Comm_State *comm,
             Payload_AckError error_payload;
             error_payload.error_code = SPI_ERROR_LENGTH;
             SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                  Uint16_FromBigEndian(rx_frame->sequence),
                                   &error_payload, sizeof(error_payload));
         }
         return HAL_ERROR;
@@ -499,13 +722,45 @@ HAL_StatusTypeDef HandleCmd_SetControl(SPI_Comm_State *comm,
     float steering = Float_FromBigEndian(&rx_frame->payload[0]);
     float throttle = Float_FromBigEndian(&rx_frame->payload[4]);
 
+    if (!isfinite(steering) || !isfinite(throttle) ||
+        steering < -30.0f || steering > 30.0f ||
+        throttle < -100.0f || throttle > 100.0f) {
+        if (tx_frame != NULL) {
+            Payload_AckError error_payload = {
+                .error_code = SPI_ERROR_INVALID_VALUE
+            };
+            SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                   Uint16_FromBigEndian(rx_frame->sequence),
+                                   &error_payload, sizeof(error_payload));
+        }
+        return HAL_ERROR;
+    }
+
+    SPI_PendingVehicleCommand pending = {
+        .command = SPI_CMD_SET_CONTROL,
+        .steering_deg = steering,
+        .throttle_percent = throttle,
+        .mode = VEHICLE_MODE_IDLE
+    };
+    if (!SPI_Comm_QueueVehicleCommand(comm, &pending)) {
+        if (tx_frame != NULL) {
+            Payload_AckError error_payload = { .error_code = SPI_ERROR_BUSY };
+            SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                   Uint16_FromBigEndian(rx_frame->sequence),
+                                   &error_payload, sizeof(error_payload));
+        }
+        return HAL_BUSY;
+    }
+
     // Update control cache
     comm->target_steering_deg = steering;
     comm->target_throttle_percent = throttle;
 
     // Send ACK_OK response
     if (tx_frame != NULL) {
-        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK, NULL, 0);
+        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK,
+                               Uint16_FromBigEndian(rx_frame->sequence),
+                               NULL, 0);
     }
 
     return HAL_OK;
@@ -518,7 +773,7 @@ HAL_StatusTypeDef HandleCmd_GetSensors(SPI_Comm_State *comm,
                                        const SPI_Frame *rx_frame,
                                        SPI_Frame *tx_frame)
 {
-    if (comm == NULL) {
+    if (comm == NULL || rx_frame == NULL) {
         return HAL_ERROR;
     }
 
@@ -527,59 +782,32 @@ HAL_StatusTypeDef HandleCmd_GetSensors(SPI_Comm_State *comm,
     }
 
     // Build response payload (matches Payload_GetSensors structure)
-    uint8_t payload[26];  // Enough for Payload_GetSensors
+    uint8_t payload[SPI_PAYLOAD_MAX_SIZE];
     uint8_t payload_len = 0;
 
-    if (comm->vehicle != NULL) {
-        // Real sensor data available
-        // SHARP sensors
-        Float_ToBigEndian(comm->vehicle->sharp_left_distance_cm, &payload[payload_len]);
-        payload_len += 4;
+    SPI_TelemetrySnapshot snapshot;
+    taskENTER_CRITICAL();
+    snapshot = comm->telemetry;
+    taskEXIT_CRITICAL();
 
-        Float_ToBigEndian(comm->vehicle->sharp_right_distance_cm, &payload[payload_len]);
-        payload_len += 4;
-
-        payload[payload_len++] = comm->vehicle->sharp_left_valid ? 1 : 0;
-        payload[payload_len++] = comm->vehicle->sharp_right_valid ? 1 : 0;
-
-        // IMU data
-        Float_ToBigEndian(comm->vehicle->roll_deg, &payload[payload_len]);
-        payload_len += 4;
-
-        Float_ToBigEndian(comm->vehicle->pitch_deg, &payload[payload_len]);
-        payload_len += 4;
-
-        Float_ToBigEndian(comm->vehicle->yaw_deg, &payload[payload_len]);
-        payload_len += 4;
-
-        payload[payload_len++] = comm->vehicle->imu_valid ? 1 : 0;
-    } else {
-        // Test mode - return dummy data
-        // SHARP sensors (dummy values)
-        Float_ToBigEndian(50.0f, &payload[payload_len]);  // Left: 50cm
-        payload_len += 4;
-
-        Float_ToBigEndian(50.0f, &payload[payload_len]);  // Right: 50cm
-        payload_len += 4;
-
-        payload[payload_len++] = 1;  // sharp_left_valid
-        payload[payload_len++] = 1;  // sharp_right_valid
-
-        // IMU data (dummy values)
-        Float_ToBigEndian(0.0f, &payload[payload_len]);   // Roll: 0 deg
-        payload_len += 4;
-
-        Float_ToBigEndian(0.0f, &payload[payload_len]);   // Pitch: 0 deg
-        payload_len += 4;
-
-        Float_ToBigEndian(0.0f, &payload[payload_len]);   // Yaw: 0 deg
-        payload_len += 4;
-
-        payload[payload_len++] = 1;  // imu_valid
-    }
+    Float_ToBigEndian(snapshot.sharp_left_distance_cm, &payload[payload_len]);
+    payload_len += 4;
+    Float_ToBigEndian(snapshot.sharp_right_distance_cm, &payload[payload_len]);
+    payload_len += 4;
+    payload[payload_len++] = snapshot.sharp_left_valid ? 1U : 0U;
+    payload[payload_len++] = snapshot.sharp_right_valid ? 1U : 0U;
+    Float_ToBigEndian(snapshot.roll_deg, &payload[payload_len]);
+    payload_len += 4;
+    Float_ToBigEndian(snapshot.pitch_deg, &payload[payload_len]);
+    payload_len += 4;
+    Float_ToBigEndian(snapshot.yaw_deg, &payload[payload_len]);
+    payload_len += 4;
+    payload[payload_len++] = snapshot.imu_valid ? 1U : 0U;
 
     // Build response frame
-    SPI_Comm_BuildResponse(tx_frame, SPI_RESP_DATA, payload, payload_len);
+    SPI_Comm_BuildResponse(tx_frame, SPI_RESP_DATA,
+                           Uint16_FromBigEndian(rx_frame->sequence),
+                           payload, payload_len);
 
     return HAL_OK;
 }
@@ -602,6 +830,7 @@ HAL_StatusTypeDef HandleCmd_SetMode(SPI_Comm_State *comm,
             Payload_AckError error_payload;
             error_payload.error_code = SPI_ERROR_LENGTH;
             SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                  Uint16_FromBigEndian(rx_frame->sequence),
                                   &error_payload, sizeof(error_payload));
         }
         return HAL_ERROR;
@@ -614,8 +843,9 @@ HAL_StatusTypeDef HandleCmd_SetMode(SPI_Comm_State *comm,
     if (mode > VEHICLE_MODE_EMERGENCY) {
         if (tx_frame != NULL) {
             Payload_AckError error_payload;
-            error_payload.error_code = SPI_ERROR_LENGTH;
+            error_payload.error_code = SPI_ERROR_INVALID_VALUE;
             SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                  Uint16_FromBigEndian(rx_frame->sequence),
                                   &error_payload, sizeof(error_payload));
         }
         return HAL_ERROR;
@@ -624,14 +854,27 @@ HAL_StatusTypeDef HandleCmd_SetMode(SPI_Comm_State *comm,
     // Update mode cache
     comm->target_mode = (Vehicle_Mode)mode;
 
-    // Apply mode change to vehicle if vehicle reference is available
-    if (comm->vehicle != NULL) {
-        Vehicle_SetMode(comm->vehicle, (Vehicle_Mode)mode);
+    SPI_PendingVehicleCommand pending = {
+        .command = SPI_CMD_SET_MODE,
+        .steering_deg = 0.0f,
+        .throttle_percent = 0.0f,
+        .mode = (Vehicle_Mode)mode
+    };
+    if (!SPI_Comm_QueueVehicleCommand(comm, &pending)) {
+        if (tx_frame != NULL) {
+            Payload_AckError error_payload = { .error_code = SPI_ERROR_BUSY };
+            SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_ERROR,
+                                   Uint16_FromBigEndian(rx_frame->sequence),
+                                   &error_payload, sizeof(error_payload));
+        }
+        return HAL_BUSY;
     }
 
     // Send ACK_OK response
     if (tx_frame != NULL) {
-        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK, NULL, 0);
+        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK,
+                               Uint16_FromBigEndian(rx_frame->sequence),
+                               NULL, 0);
     }
 
     return HAL_OK;
@@ -645,7 +888,7 @@ HAL_StatusTypeDef HandleCmd_EmergencyStop(SPI_Comm_State *comm,
                                           SPI_Frame *tx_frame)
 {
     // Input validation
-    if (comm == NULL) {
+    if (comm == NULL || rx_frame == NULL) {
         return HAL_ERROR;
     }
 
@@ -654,14 +897,21 @@ HAL_StatusTypeDef HandleCmd_EmergencyStop(SPI_Comm_State *comm,
     comm->target_throttle_percent = 0.0f;
     comm->target_mode = VEHICLE_MODE_EMERGENCY;
 
-    // Apply emergency stop to vehicle immediately if vehicle reference is available
-    if (comm->vehicle != NULL) {
-        Vehicle_EmergencyStop(comm->vehicle);
+    SPI_PendingVehicleCommand pending = {
+        .command = SPI_CMD_EMERGENCY_STOP,
+        .steering_deg = 0.0f,
+        .throttle_percent = 0.0f,
+        .mode = VEHICLE_MODE_EMERGENCY
+    };
+    if (!SPI_Comm_QueueVehicleCommand(comm, &pending)) {
+        return HAL_BUSY;
     }
 
     // Send ACK_OK response
     if (tx_frame != NULL) {
-        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK, NULL, 0);
+        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK,
+                               Uint16_FromBigEndian(rx_frame->sequence),
+                               NULL, 0);
     }
 
     return HAL_OK;
@@ -675,7 +925,7 @@ HAL_StatusTypeDef HandleCmd_Heartbeat(SPI_Comm_State *comm,
                                       SPI_Frame *tx_frame)
 {
     // Input validation
-    if (comm == NULL) {
+    if (comm == NULL || rx_frame == NULL) {
         return HAL_ERROR;
     }
 
@@ -684,7 +934,9 @@ HAL_StatusTypeDef HandleCmd_Heartbeat(SPI_Comm_State *comm,
 
     // Send ACK_OK response
     if (tx_frame != NULL) {
-        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK, NULL, 0);
+        SPI_Comm_BuildResponse(tx_frame, SPI_RESP_ACK_OK,
+                               Uint16_FromBigEndian(rx_frame->sequence),
+                               NULL, 0);
     }
 
     return HAL_OK;
@@ -754,6 +1006,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
         // Build frame (clear entire frame first to zero Padding)
         memset(frame, 0, sizeof(SPI_Frame));
         frame->header = SPI_FRAME_HEADER;
+        frame->version_flags = SPI_VERSION_FLAGS;
+        Uint16_ToBigEndian(0U, frame->sequence);
         frame->command = SPI_CMD_SET_CONTROL;
         frame->length = sizeof(Payload_SetControl);
 
@@ -783,6 +1037,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
             // Build frame (clear entire frame first to zero Padding)
             memset(frame, 0, sizeof(SPI_Frame));
             frame->header = SPI_FRAME_HEADER;
+            frame->version_flags = SPI_VERSION_FLAGS;
+            Uint16_ToBigEndian(0U, frame->sequence);
             frame->command = SPI_CMD_SET_MODE;
             frame->length = 1;
             frame->payload[0] = mode;
@@ -799,6 +1055,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
     else if (strcmp(cmd, "GET_STATUS") == 0) {
         memset(frame, 0, sizeof(SPI_Frame));
         frame->header = SPI_FRAME_HEADER;
+        frame->version_flags = SPI_VERSION_FLAGS;
+        Uint16_ToBigEndian(0U, frame->sequence);
         frame->command = SPI_CMD_GET_STATUS;
         frame->length = 0;
 
@@ -812,6 +1070,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
     else if (strcmp(cmd, "GET_SENSORS") == 0) {
         memset(frame, 0, sizeof(SPI_Frame));
         frame->header = SPI_FRAME_HEADER;
+        frame->version_flags = SPI_VERSION_FLAGS;
+        Uint16_ToBigEndian(0U, frame->sequence);
         frame->command = SPI_CMD_GET_SENSORS;
         frame->length = 0;
 
@@ -825,6 +1085,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
     else if (strcmp(cmd, "EMERGENCY_STOP") == 0) {
         memset(frame, 0, sizeof(SPI_Frame));
         frame->header = SPI_FRAME_HEADER;
+        frame->version_flags = SPI_VERSION_FLAGS;
+        Uint16_ToBigEndian(0U, frame->sequence);
         frame->command = SPI_CMD_EMERGENCY_STOP;
         frame->length = 0;
 
@@ -838,6 +1100,8 @@ HAL_StatusTypeDef UART_ParseTestCommand(const char *uart_buffer, SPI_Frame *fram
     else if (strcmp(cmd, "HEARTBEAT") == 0) {
         memset(frame, 0, sizeof(SPI_Frame));
         frame->header = SPI_FRAME_HEADER;
+        frame->version_flags = SPI_VERSION_FLAGS;
+        Uint16_ToBigEndian(0U, frame->sequence);
         frame->command = SPI_CMD_HEARTBEAT;
         frame->length = 0;
 

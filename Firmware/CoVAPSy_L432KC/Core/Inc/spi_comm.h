@@ -46,7 +46,13 @@ extern "C" {
 #define SPI_FRAME_SIZE              32      // Total frame size (bytes)
 #define SPI_FRAME_HEADER            0xAA    // Frame header magic byte
 #define SPI_FRAME_FOOTER            0x55    // Frame footer magic byte
-#define SPI_PAYLOAD_MAX_SIZE        26      // Maximum payload size (bytes)
+#define SPI_PROTOCOL_VERSION        0x01
+#define SPI_PROTOCOL_FLAGS          0x00
+#define SPI_VERSION_FLAGS           ((SPI_PROTOCOL_VERSION << 4) | SPI_PROTOCOL_FLAGS)
+#define SPI_PAYLOAD_MAX_SIZE        23      // Maximum payload size (bytes)
+#define SPI_SEQUENCE_BOOT           0xFFFFU
+#define SPI_PENDING_QUEUE_SIZE      4U
+#define SPI_RESPONSE_CACHE_SIZE     4U
 
 // Command codes (Master → Slave: 0x01-0x7F)
 #define SPI_CMD_GET_STATUS          0x01    // Get vehicle status
@@ -69,6 +75,12 @@ extern "C" {
 #define SPI_ERROR_LENGTH            0x04    // Invalid payload length
 #define SPI_ERROR_UNKNOWN_CMD       0x05    // Unknown command code
 #define SPI_ERROR_TIMEOUT           0x06    // Communication timeout
+#define SPI_ERROR_BUSY              0x07    // Command queue full
+#define SPI_ERROR_INVALID_VALUE     0x08    // NaN/Inf or out-of-range value
+#define SPI_ERROR_VERSION           0x09    // Unsupported protocol version
+#define SPI_ERROR_SEQUENCE          0x0A    // Invalid sequence
+#define SPI_ERROR_SHORT_FRAME       0x0B    // NSS rose before 32 bytes arrived
+#define SPI_ERROR_INTERNAL          0x0C    // SPI/DMA internal error
 
 // Communication timing
 #define SPI_COMM_FREQUENCY_HZ       20      // SPI communication frequency (20Hz)
@@ -84,20 +96,30 @@ extern "C" {
  *
  * Frame layout:
  * [0]    Header (0xAA)
- * [1]    Command code
- * [2]    Payload length (0-26)
- * [3-28] Payload data (26 bytes max)
+ * [1]    Version/flags
+ * [2-3]  Sequence number (Big-Endian)
+ * [4]    Command/response code
+ * [5]    Payload length (0-23)
+ * [6-28] Payload data (23 bytes max)
  * [29-30] CRC16 (Big-Endian)
  * [31]   Footer (0x55)
  */
 typedef struct __attribute__((packed)) {
     uint8_t  header;                        // [0] Frame header (0xAA)
-    uint8_t  command;                       // [1] Command code
-    uint8_t  length;                        // [2] Payload length (0-26)
-    uint8_t  payload[SPI_PAYLOAD_MAX_SIZE]; // [3-28] Payload data
+    uint8_t  version_flags;                 // [1] Protocol version and flags
+    uint8_t  sequence[2];                   // [2-3] Sequence number (Big-Endian)
+    uint8_t  command;                       // [4] Command/response code
+    uint8_t  length;                        // [5] Payload length (0-23)
+    uint8_t  payload[SPI_PAYLOAD_MAX_SIZE]; // [6-28] Payload data
     uint8_t  crc16[2];                      // [29-30] CRC-16/MODBUS (Big-Endian: [0]=MSB, [1]=LSB)
     uint8_t  footer;                        // [31] Frame footer (0x55)
 } SPI_Frame;
+
+#if defined(__cplusplus)
+static_assert(sizeof(SPI_Frame) == SPI_FRAME_SIZE, "SPI frame must be 32 bytes");
+#else
+_Static_assert(sizeof(SPI_Frame) == SPI_FRAME_SIZE, "SPI frame must be 32 bytes");
+#endif
 
 /**
  * @brief Payload structure for SET_CONTROL command (8 bytes)
@@ -150,26 +172,83 @@ typedef struct __attribute__((packed)) {
     uint8_t error_code;     // Error code (SPI_ERROR_xxx)
 } Payload_AckError;
 
+typedef enum {
+    SPI_COMM_STATE_STOPPED = 0,
+    SPI_COMM_STATE_ARMED,
+    SPI_COMM_STATE_TRANSFER,
+    SPI_COMM_STATE_PROCESSING,
+    SPI_COMM_STATE_ERROR
+} SPI_Comm_RunState;
+
+typedef struct {
+    uint8_t command;
+    float steering_deg;
+    float throttle_percent;
+    Vehicle_Mode mode;
+} SPI_PendingVehicleCommand;
+
+typedef struct {
+    Vehicle_Mode mode;
+    float current_steering_deg;
+    float current_throttle_percent;
+    uint8_t is_reversing;
+    uint8_t safety_stop_triggered;
+    uint32_t control_loop_counter;
+    float sharp_left_distance_cm;
+    float sharp_right_distance_cm;
+    uint8_t sharp_left_valid;
+    uint8_t sharp_right_valid;
+    float roll_deg;
+    float pitch_deg;
+    float yaw_deg;
+    uint8_t imu_valid;
+} SPI_TelemetrySnapshot;
+
 /**
  * @brief SPI communication state management
  */
 typedef struct {
-    /* === Dual Buffer (solve 20Hz comm vs 50Hz control beat frequency) === */
+    /* === DMA buffers (DMA_NORMAL; never modified while DMA is active) === */
     SPI_Frame rx_buffer_primary;        // Primary RX buffer (SPI DMA writes here)
-    SPI_Frame rx_buffer_secondary;      // Secondary RX buffer (control loop reads here)
+    SPI_Frame rx_buffer_secondary;      // Stable task-context copy / legacy test buffer
     SPI_Frame tx_buffer;                // TX buffer for responses
-    volatile uint8_t buffer_swap_flag;  // Buffer swap flag (1=new data available)
+    SPI_Frame cached_response;          // Response reused for duplicate sequence
+    SPI_Frame response_cache[SPI_RESPONSE_CACHE_SIZE];
+    uint16_t response_sequence[SPI_RESPONSE_CACHE_SIZE];
+    uint8_t response_valid[SPI_RESPONSE_CACHE_SIZE];
+    uint8_t response_cache_next;
+    volatile uint8_t buffer_swap_flag;  // Legacy debug-mode flag
+
+    volatile uint8_t dma_complete;
+    volatile uint8_t nss_high;
+    volatile uint8_t short_frame;
+    volatile uint8_t spi_error;
+    volatile SPI_Comm_RunState run_state;
+
+    uint16_t last_sequence;
+    uint8_t last_sequence_valid;
 
     /* === Communication Statistics === */
     uint32_t frame_received_count;      // Total frames received
     uint32_t crc_error_count;           // CRC error count
     uint32_t frame_error_count;         // Frame format error count
     uint32_t valid_command_count;       // Valid command count
+    uint32_t duplicate_count;
+    uint32_t short_frame_count;
+    uint32_t dma_error_count;
+    uint32_t dma_restart_error_count;
 
     /* === Control Data Cache (extracted from latest valid frame) === */
     float target_steering_deg;          // Target steering [-30, +30] deg
     float target_throttle_percent;      // Target throttle [-100, +100] %
     Vehicle_Mode target_mode;           // Target vehicle mode
+
+    SPI_PendingVehicleCommand pending_queue[SPI_PENDING_QUEUE_SIZE];
+    volatile uint8_t pending_head;
+    volatile uint8_t pending_tail;
+    volatile uint8_t pending_count;
+
+    SPI_TelemetrySnapshot telemetry;
 
     /* === Watchdog Timestamp === */
     uint32_t last_valid_command_time;   // Last valid command timestamp (ms)
@@ -190,9 +269,8 @@ typedef struct {
 /**
  * @brief Global SPI communication state pointer
  *
- * This pointer is set during SPI_Comm_Init() and used by:
- * - HAL_SPI_TxRxCpltCallback() in interrupt context
- * - Vehicle_ControlLoop() in main context via SPI_Comm_UpdateVehicleControl()
+ * This pointer is set during SPI_Comm_Init() and used by the SPI/DMA/EXTI
+ * callbacks. Protocol processing remains in SPICommTask context.
  *
  * @note Must be initialized before use. Check for NULL before dereferencing.
  */
@@ -217,6 +295,11 @@ extern SPI_Comm_State *g_spi_comm_ptr;
  *       - comm->huart_debug = &huart2;
  */
 HAL_StatusTypeDef SPI_Comm_Init(SPI_Comm_State *comm);
+HAL_StatusTypeDef SPI_Comm_Start(SPI_Comm_State *comm);
+HAL_StatusTypeDef SPI_Comm_Service(SPI_Comm_State *comm);
+void SPI_Comm_HandleNssEdge(uint8_t nss_is_high);
+void SPI_Comm_PublishTelemetry(SPI_Comm_State *comm,
+                               const Vehicle_State *vehicle);
 
 /**
  * @brief Validate SPI frame (Header/Footer/CRC check)
@@ -262,6 +345,7 @@ HAL_StatusTypeDef SPI_Comm_ProcessFrame(SPI_Comm_State *comm,
  */
 HAL_StatusTypeDef SPI_Comm_BuildResponse(SPI_Frame *tx_frame,
                                          uint8_t response_code,
+                                         uint16_t sequence,
                                          const void *payload,
                                          uint8_t payload_length);
 
@@ -280,16 +364,16 @@ HAL_StatusTypeDef SPI_Comm_BuildResponse(SPI_Frame *tx_frame,
  *
  * @note Test vector:
  *       Input:  {0x01, 0x03, 0x00, 0x00, 0x00, 0x0A}
- *       Output: 0xC5CD
+ *       Output: 0xCDC5
  */
 uint16_t SPI_Comm_CalculateCRC16(const uint8_t *data, uint16_t length);
 
 /**
  * @brief Update vehicle control from SPI communication data (50Hz call in control loop)
  *
- * This function is called in the 50Hz control loop. It checks for new SPI data
- * and applies control values to the vehicle. Uses dual buffer mechanism to
- * avoid race conditions with SPI interrupt.
+ * This function is called in the 50Hz control task. It drains validated
+ * commands queued by SPICommTask and is the only SPI path that modifies the
+ * vehicle state or actuators.
  *
  * @param comm Pointer to SPI_Comm_State structure
  * @param vehicle Pointer to Vehicle_State structure

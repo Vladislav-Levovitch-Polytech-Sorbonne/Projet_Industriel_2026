@@ -59,6 +59,10 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SPI_READY_Pin GPIO_PIN_0
+#define SPI_READY_GPIO_Port GPIOA
+#define SPI_NSS_Pin GPIO_PIN_4
+#define SPI_NSS_GPIO_Port GPIOA
 #define VCP_TX_Pin GPIO_PIN_2
 #define VCP_TX_GPIO_Port GPIOA
 #define PWM_ESC_Pin GPIO_PIN_8

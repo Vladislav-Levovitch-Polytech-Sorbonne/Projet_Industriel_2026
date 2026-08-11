@@ -44,7 +44,9 @@ except ImportError:
 FRAME_SIZE = 32
 HEADER_BYTE = 0xAA
 FOOTER_BYTE = 0x55
-MAX_PAYLOAD_SIZE = 26
+PROTOCOL_VERSION = 0x01
+VERSION_FLAGS = PROTOCOL_VERSION << 4
+MAX_PAYLOAD_SIZE = 23
 
 # Command codes (Pi -> STM32)
 CMD_GET_STATUS = 0x01
@@ -67,6 +69,12 @@ ERROR_FOOTER = 0x03
 ERROR_LENGTH = 0x04
 ERROR_UNKNOWN_CMD = 0x05
 ERROR_TIMEOUT = 0x06
+ERROR_BUSY = 0x07
+ERROR_INVALID_VALUE = 0x08
+ERROR_VERSION = 0x09
+ERROR_SEQUENCE = 0x0A
+ERROR_SHORT_FRAME = 0x0B
+ERROR_INTERNAL = 0x0C
 
 # Vehicle modes
 MODE_IDLE = 0
@@ -90,7 +98,13 @@ ERROR_NAMES = {
     ERROR_FOOTER: "Invalid footer",
     ERROR_LENGTH: "Invalid length",
     ERROR_UNKNOWN_CMD: "Unknown command",
-    ERROR_TIMEOUT: "Timeout"
+    ERROR_TIMEOUT: "Timeout",
+    ERROR_BUSY: "Slave busy",
+    ERROR_INVALID_VALUE: "Invalid value",
+    ERROR_VERSION: "Unsupported protocol version",
+    ERROR_SEQUENCE: "Invalid sequence",
+    ERROR_SHORT_FRAME: "Short SPI frame",
+    ERROR_INTERNAL: "Internal SPI/DMA error"
 }
 
 
@@ -113,7 +127,7 @@ def calculate_crc16(data: bytes) -> int:
 
     Test vector:
         Input: [0x01, 0x03, 0x00, 0x00, 0x00, 0x0A]
-        Output: 0xC5CD
+        Output: 0xCDC5
     """
     crc = 0xFFFF
     for byte in data:
@@ -156,7 +170,8 @@ class CoVAPSySPI:
         spi.close()
     """
 
-    def __init__(self, bus: int = 0, device: int = 0, speed: int = 1000000):
+    def __init__(self, bus: int = 0, device: int = 0, speed: int = 1000000,
+                 max_retries: int = 2):
         """
         Initialize SPI communication.
 
@@ -168,6 +183,7 @@ class CoVAPSySPI:
         self.bus = bus
         self.device = device
         self.speed = speed
+        self.max_retries = max(0, max_retries)
         self.spi = None
         self.is_open = False
 
@@ -176,6 +192,11 @@ class CoVAPSySPI:
         self.rx_count = 0
         self.crc_errors = 0
         self.frame_errors = 0
+        self.sequence_errors = 0
+        self.retry_count = 0
+        self._next_sequence = 0
+        self._expected_response_sequence = None
+        self._simulation_response = None
 
         # SPI full-duplex: store last response for debugging
         self._last_raw_response = None
@@ -213,15 +234,23 @@ class CoVAPSySPI:
         self.is_open = False
         print("[SPI] Connection closed")
 
-    def build_frame(self, command: int, payload: bytes = b'') -> bytes:
+    def _allocate_sequence(self) -> int:
+        sequence = self._next_sequence
+        self._next_sequence = (self._next_sequence + 1) & 0xFFFF
+        return sequence
+
+    def build_frame(self, command: int, payload: bytes = b'',
+                    sequence: Optional[int] = None) -> bytes:
         """
         Build a 32-byte SPI frame.
 
         Frame format:
             [0]     Header (0xAA)
-            [1]     Command
-            [2]     Length (payload size)
-            [3-28]  Payload (26 bytes, zero-padded)
+            [1]     Version/flags
+            [2-3]   Sequence (big-endian)
+            [4]     Command
+            [5]     Length (payload size)
+            [6-28]  Payload (23 bytes, zero-padded)
             [29-30] CRC-16 (big-endian)
             [31]    Footer (0x55)
 
@@ -236,10 +265,15 @@ class CoVAPSySPI:
             raise ValueError(f"Payload too large: {len(payload)} > {MAX_PAYLOAD_SIZE}")
 
         frame = bytearray(FRAME_SIZE)
+        if sequence is None:
+            sequence = self._allocate_sequence()
+
         frame[0] = HEADER_BYTE
-        frame[1] = command
-        frame[2] = len(payload)
-        frame[3:3+len(payload)] = payload
+        frame[1] = VERSION_FLAGS
+        frame[2:4] = int(sequence).to_bytes(2, 'big')
+        frame[4] = command
+        frame[5] = len(payload)
+        frame[6:6+len(payload)] = payload
 
         # Calculate CRC over first 29 bytes
         crc = calculate_crc16(bytes(frame[:29]))
@@ -265,8 +299,12 @@ class CoVAPSySPI:
             - error: Error message if invalid
             - data: Parsed data (for DATA responses)
         """
+        expected_sequence = self._expected_response_sequence
+        self._expected_response_sequence = None
+
         result = {
             'valid': False,
+            'sequence': 0,
             'command': 0,
             'length': 0,
             'payload': b'',
@@ -290,6 +328,16 @@ class CoVAPSySPI:
             self.frame_errors += 1
             return result
 
+        if (data[1] >> 4) != PROTOCOL_VERSION:
+            result['error'] = f'Unsupported protocol version: {data[1] >> 4}'
+            self.frame_errors += 1
+            return result
+
+        if data[5] > MAX_PAYLOAD_SIZE:
+            result['error'] = f'Invalid payload length: {data[5]}'
+            self.frame_errors += 1
+            return result
+
         # Verify CRC
         crc_calc = calculate_crc16(data[:29])
         crc_recv = (data[29] << 8) | data[30]
@@ -300,21 +348,32 @@ class CoVAPSySPI:
 
         # Parse fields
         result['valid'] = True
-        result['command'] = data[1]
-        result['length'] = data[2]
-        result['payload'] = bytes(data[3:3+data[2]])
+        result['sequence'] = int.from_bytes(data[2:4], 'big')
+        result['command'] = data[4]
+        result['length'] = data[5]
+        result['payload'] = bytes(data[6:6+data[5]])
+
+        if expected_sequence is not None:
+            if result['sequence'] != expected_sequence:
+                result['valid'] = False
+                result['error'] = (
+                    f'Sequence mismatch: expected={expected_sequence}, '
+                    f'received={result["sequence"]}'
+                )
+                self.sequence_errors += 1
+                return result
 
         # Parse response data based on command type
-        if data[1] == RESP_ACK_OK:
+        if data[4] == RESP_ACK_OK:
             result['data'] = {'ack': 'OK'}
-        elif data[1] == RESP_ACK_ERROR:
-            error_code = data[3] if data[2] > 0 else 0
+        elif data[4] == RESP_ACK_ERROR:
+            error_code = data[6] if data[5] > 0 else 0
             result['data'] = {
                 'ack': 'ERROR',
                 'error_code': error_code,
                 'error_name': ERROR_NAMES.get(error_code, 'Unknown')
             }
-        elif data[1] == RESP_DATA:
+        elif data[4] == RESP_DATA:
             result['data'] = self._parse_data_payload(result['payload'])
 
         self.rx_count += 1
@@ -377,10 +436,15 @@ class CoVAPSySPI:
         self.tx_count += 1
 
         if not SPI_AVAILABLE or not self.spi:
-            # Simulation mode - return empty response
-            return bytes([HEADER_BYTE, RESP_ACK_OK, 0] + [0]*26 +
-                        list(calculate_crc16(bytes([HEADER_BYTE, RESP_ACK_OK, 0] + [0]*26)).to_bytes(2, 'big')) +
-                        [FOOTER_BYTE])
+            # Simulate the same one-transaction response delay as real SPI.
+            if self._simulation_response is None:
+                self._simulation_response = self.build_frame(
+                    RESP_ACK_OK, sequence=0xFFFF)
+            response = self._simulation_response
+            request_sequence = int.from_bytes(tx_frame[2:4], 'big')
+            self._simulation_response = self.build_frame(
+                RESP_ACK_OK, sequence=request_sequence)
+            return response
 
         # Full duplex transfer
         rx_data = self.spi.xfer2(list(tx_frame))
@@ -403,19 +467,39 @@ class CoVAPSySPI:
         Returns:
             Received frame (response to the command we just sent)
         """
-        # Step 1: Send the actual command
-        # The response here is for the PREVIOUS command, so we ignore it
-        _ = self._transfer_raw(tx_frame)
+        expected_sequence = int.from_bytes(tx_frame[2:4], 'big')
+        rx_data = bytes(FRAME_SIZE)
 
-        # Step 2: Wait for STM32 DMA to restart (critical!)
-        # STM32 needs time to process the frame and restart DMA
-        time.sleep(0.002)  # 2ms delay
+        for attempt in range(self.max_retries + 1):
+            # The first RX is the response to the previous transaction.
+            _ = self._transfer_raw(tx_frame)
+            time.sleep(0.002)
 
-        # Step 3: Send HEARTBEAT to fetch the response for our command
-        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
-        rx_data = self._transfer_raw(heartbeat_frame)
+            # A fetch transaction clocks the requested response out of slave.
+            heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
+            rx_data = self._transfer_raw(heartbeat_frame)
 
+            if self._raw_frame_matches_sequence(rx_data, expected_sequence):
+                break
+
+            if attempt < self.max_retries:
+                self.retry_count += 1
+                time.sleep(0.002)
+
+        self._expected_response_sequence = expected_sequence
         return rx_data
+
+    @staticmethod
+    def _raw_frame_matches_sequence(data: bytes, sequence: int) -> bool:
+        if len(data) != FRAME_SIZE:
+            return False
+        if data[0] != HEADER_BYTE or data[31] != FOOTER_BYTE:
+            return False
+        if (data[1] >> 4) != PROTOCOL_VERSION:
+            return False
+        if calculate_crc16(data[:29]) != int.from_bytes(data[29:31], 'big'):
+            return False
+        return int.from_bytes(data[2:4], 'big') == sequence
 
     def _transfer_no_fetch(self, tx_frame: bytes) -> bytes:
         """
@@ -540,17 +624,7 @@ class CoVAPSySPI:
 
         payload = bytes([mode])
         tx_frame = self.build_frame(CMD_SET_MODE, payload)
-
-        # Step 1: Send command
-        _ = self._transfer_raw(tx_frame)
-
-        # Step 2: Wait for STM32 to process (mode changes have UART output)
-        time.sleep(0.1)  # 100ms delay
-
-        # Step 3: Send HEARTBEAT to fetch response
-        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
-        rx_frame = self._transfer_raw(heartbeat_frame)
-
+        rx_frame = self._transfer(tx_frame)
         return self.parse_response(rx_frame)
 
     def emergency_stop(self) -> Dict[str, Any]:
@@ -566,17 +640,7 @@ class CoVAPSySPI:
             Parsed response dictionary
         """
         tx_frame = self.build_frame(CMD_EMERGENCY_STOP)
-
-        # Step 1: Send command
-        _ = self._transfer_raw(tx_frame)
-
-        # Step 2: Wait for STM32 to process (emergency stop has UART output)
-        time.sleep(0.1)  # 100ms delay
-
-        # Step 3: Send HEARTBEAT to fetch response
-        heartbeat_frame = self.build_frame(CMD_HEARTBEAT)
-        rx_frame = self._transfer_raw(heartbeat_frame)
-
+        rx_frame = self._transfer(tx_frame)
         return self.parse_response(rx_frame)
 
     def heartbeat(self) -> Dict[str, Any]:
@@ -638,7 +702,9 @@ class CoVAPSySPI:
             'tx_count': self.tx_count,
             'rx_count': self.rx_count,
             'crc_errors': self.crc_errors,
-            'frame_errors': self.frame_errors
+            'frame_errors': self.frame_errors,
+            'sequence_errors': self.sequence_errors,
+            'retry_count': self.retry_count
         }
 
     def reset_statistics(self):
@@ -647,6 +713,8 @@ class CoVAPSySPI:
         self.rx_count = 0
         self.crc_errors = 0
         self.frame_errors = 0
+        self.sequence_errors = 0
+        self.retry_count = 0
 
 
 # ============================================
@@ -667,8 +735,10 @@ def print_frame(frame: bytes, title: str = "Frame"):
 
     # Parse structure
     print(f"  Header:  0x{frame[0]:02X}")
-    print(f"  Command: 0x{frame[1]:02X}")
-    print(f"  Length:  {frame[2]}")
+    print(f"  Version: {frame[1] >> 4}")
+    print(f"  Sequence:{int.from_bytes(frame[2:4], 'big')}")
+    print(f"  Command: 0x{frame[4]:02X}")
+    print(f"  Length:  {frame[5]}")
     print(f"  CRC:     0x{frame[29]:02X}{frame[30]:02X}")
     print(f"  Footer:  0x{frame[31]:02X}")
 
@@ -723,7 +793,7 @@ if __name__ == "__main__":
     print("\n1. CRC-16/MODBUS Test:")
     test_data = bytes([0x01, 0x03, 0x00, 0x00, 0x00, 0x0A])
     crc = calculate_crc16(test_data)
-    expected = 0xC5CD
+    expected = 0xCDC5
     print(f"   Input:    {test_data.hex()}")
     print(f"   CRC:      0x{crc:04X}")
     print(f"   Expected: 0x{expected:04X}")

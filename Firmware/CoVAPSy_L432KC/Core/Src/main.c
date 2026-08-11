@@ -33,6 +33,7 @@
 #include "vehicle_state.h"
 #include "spi_comm.h"
 #include "cmsis_os.h"
+#include "task.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -86,10 +87,12 @@ const osThreadAttr_t DebugTask_attributes = {
   .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityLow1,
 };
-/* Definitions for SPIDataSemaphore */
-osSemaphoreId_t SPIDataSemaphoreHandle;
-const osSemaphoreAttr_t SPIDataSemaphore_attributes = {
-  .name = "SPIDataSemaphore"
+/* Definitions for SPICommTask */
+osThreadId_t SPICommTaskHandle;
+const osThreadAttr_t SPICommTask_attributes = {
+  .name = "SPICommTask",
+  .stack_size = 512 * 4,
+  .priority = (osPriority_t) osPriorityHigh2,
 };
 /* USER CODE BEGIN PV */
 Vehicle_State g_vehicle;
@@ -110,6 +113,7 @@ static void MX_SPI3_Init(void);
 void StartDefaultTask(void *argument);
 void StartControlTask(void *argument);
 void StartDebugTask(void *argument);
+void StartSPICommTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -228,7 +232,10 @@ int main(void)
   g_spi_comm.vehicle     = &g_vehicle;
 
   // 4. 初始化 SPI 通信模块
-  SPI_Comm_Init(&g_spi_comm);
+  if (SPI_Comm_Init(&g_spi_comm) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   // 5. 电调解锁（发送 2 秒中性脉冲，必须在调度器启动前完成）
   ESC_Arm(&htim1, &g_vehicle.esc_data, &huart2);
@@ -244,10 +251,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* creation of SPIDataSemaphore */
-  SPIDataSemaphoreHandle = osSemaphoreNew(1, 0, &SPIDataSemaphore_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -270,6 +273,9 @@ int main(void)
 
   /* creation of DebugTask */
   DebugTaskHandle = osThreadNew(StartDebugTask, NULL, &DebugTask_attributes);
+
+  /* creation of SPICommTask */
+  SPICommTaskHandle = osThreadNew(StartSPICommTask, NULL, &SPICommTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -673,6 +679,7 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -682,6 +689,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
+  HAL_GPIO_WritePin(SPI_READY_GPIO_Port, SPI_READY_Pin, GPIO_PIN_RESET);
+
+  GPIO_InitStruct.Pin = SPI_READY_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(SPI_READY_GPIO_Port, &GPIO_InitStruct);
+
+  /* PA4 remains SPI3_NSS alternate function; EXTI observes both NSS edges. */
+  __HAL_RCC_SYSCFG_CLK_ENABLE();
+  SYSCFG->EXTICR[1] &= ~SYSCFG_EXTICR2_EXTI4;
+  EXTI->IMR1 |= EXTI_IMR1_IM4;
+  EXTI->RTSR1 |= EXTI_RTSR1_RT4;
+  EXTI->FTSR1 |= EXTI_FTSR1_FT4;
+  __HAL_GPIO_EXTI_CLEAR_IT(SPI_NSS_Pin);
+  HAL_NVIC_SetPriority(EXTI4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
@@ -737,24 +761,46 @@ void StartControlTask(void *argument)
 	    {
 	      tick += 20;  // 先算好下一次唤醒的绝对时刻
 
-	      // 1. 更新传感器数据
-	      Vehicle_UpdateSensors(&g_vehicle);
+	      // 1. 仅由控制任务执行来自SPI的车辆命令
+	      SPI_Comm_UpdateVehicleControl(&g_spi_comm, &g_vehicle);
 
-	      // 2. 非阻塞尝试获取信号量（timeout=0：不等待，立即返回）
-	      //    中断释放了信号量 → 获取成功 → 处理新 SPI 数据
-	      //    没有新数据      → 获取失败 → 跳过，继续控制循环
-	      if (osSemaphoreAcquire(SPIDataSemaphoreHandle, 0) == osOK)
-	      {
-	        SPI_Comm_UpdateVehicleControl(&g_spi_comm, &g_vehicle);
-	      }
+	      // 2. 更新传感器数据
+	      Vehicle_UpdateSensors(&g_vehicle);
 
 	      // 3. 执行控制循环
 	      Vehicle_ControlLoop(&g_vehicle);
 
-	      // 4. 等待到绝对时刻 tick（自动补偿执行时间）
+	      // 4. 发布一致的遥测快照供SPI任务读取
+	      SPI_Comm_PublishTelemetry(&g_spi_comm, &g_vehicle);
+
+	      // 5. 等待到绝对时刻 tick（自动补偿执行时间）
 	      osDelayUntil(tick);
 	    }
   /* USER CODE END StartControlTask */
+}
+
+void StartSPICommTask(void *argument)
+{
+  (void)argument;
+
+  while (SPI_Comm_Start(&g_spi_comm) != HAL_OK)
+  {
+    osDelay(10);
+  }
+
+  for (;;)
+  {
+    (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    HAL_StatusTypeDef status = SPI_Comm_Service(&g_spi_comm);
+    if (status != HAL_OK && status != HAL_BUSY)
+    {
+      while (SPI_Comm_Start(&g_spi_comm) != HAL_OK)
+      {
+        osDelay(10);
+      }
+    }
+  }
 }
 
 /* USER CODE BEGIN Header_StartDebugTask */

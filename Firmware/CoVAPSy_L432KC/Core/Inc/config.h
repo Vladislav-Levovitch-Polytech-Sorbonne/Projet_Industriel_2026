@@ -81,7 +81,7 @@ extern "C" {
                                      // Simulates Raspberry Pi SPI commands
 
 /* Vehicle Watchdog Timeout (REMOTE mode only) */
-#define VEHICLE_WATCHDOG_ENABLE 0    // 1=Enable, 0=Disable
+#define VEHICLE_WATCHDOG_ENABLE 1    // Production fail-safe: stop after command timeout
                                      // When enabled, triggers EMERGENCY_STOP if no command
                                      // received for >500ms in REMOTE mode
                                      // Set to 0 for manual testing (slow  UART input)
