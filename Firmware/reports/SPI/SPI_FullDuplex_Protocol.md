@@ -1,4 +1,6 @@
-# SPI 全双工通信协议说明
+# SPI 全双工通信协议说明（V1历史文档）
+
+> 当前固件已经升级到带READY握手、16位Sequence和任务态处理的V2协议；帧格式和实现要求以 [SPI_DMA_MCU_Protocol_V2.md](./SPI_DMA_MCU_Protocol_V2.md) 为准。
 
 ## 重要：一帧延迟机制 (One-Frame Lag)
 

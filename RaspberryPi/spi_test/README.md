@@ -19,6 +19,7 @@
 │ Pin 21 (MISO)│◄──────────────│ PB4 (MISO)   │
 │ Pin 23 (SCLK)│──────────────►│ PB3 (SCK)    │
 │ Pin 24 (CE0) │──────────────►│ PA4 (NSS)    │
+│ 可选GPIO      │◄──────────────│ PA0 (READY)  │
 │ Pin 6  (GND) │───────────────│ GND          │
 └──────────────┘               └──────────────┘
 ```
@@ -122,9 +123,11 @@ spi.close()
 偏移  字段      大小   说明
 ────────────────────────────────
 0     Header    1B     固定 0xAA
-1     Command   1B     命令/响应码
-2     Length    1B     负载长度 (0-26)
-3-28  Payload   26B    数据负载
+1     Ver/Flags 1B     高4位协议版本，当前为1
+2-3   Sequence  2B     请求序号，大端；响应原样返回
+4     Command   1B     命令/响应码
+5     Length    1B     负载长度 (0-23)
+6-28  Payload   23B    数据负载
 29-30 CRC16     2B     CRC-16/MODBUS (大端)
 31    Footer    1B     固定 0x55
 ```
@@ -207,7 +210,7 @@ sudo chmod 666 /dev/spidev0.0
 ------------------------------------------------------------
 Test 1: Communication
 ------------------------------------------------------------
-    [PASS] CRC(0103000000a) = 0xC5CD
+    [PASS] CRC(01030000000a) = 0xCDC5
     [PASS] Frame size = 32 bytes
     [PASS] GET_STATUS response valid
 

@@ -22,11 +22,6 @@
 
 #include "vehicle_state.h"
 
-/* SPI Communication Integration (Phase 2) */
-#if SPI_COMM_ENABLE
-#include "spi_comm.h"
-#endif
-
 #if VEHICLE_ENABLE
 
 /* ============================================ */
@@ -358,16 +353,6 @@ HAL_StatusTypeDef Vehicle_ControlLoop(Vehicle_State *vehicle)
 
     // 1. Increment control loop counter
     vehicle->control_loop_counter++;
-
-    // 1.5. SPI Communication Integration (Phase 2)
-    // In REMOTE mode, read control data from SPI (Raspberry Pi)
-    // This updates target_steering_deg and target_throttle_percent
-#if SPI_COMM_ENABLE
-    if (vehicle->mode == VEHICLE_MODE_REMOTE && g_spi_comm_ptr != NULL) {
-        // Read SPI data and apply control values
-        SPI_Comm_UpdateVehicleControl(g_spi_comm_ptr, vehicle);
-    }
-#endif
 
     // 2. Safety check (highest priority)
     if (Vehicle_CheckSafety(vehicle) != HAL_OK) {
